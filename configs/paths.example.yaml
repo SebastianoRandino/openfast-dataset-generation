@@ -1,0 +1,5 @@
+# Copy this file to configs/paths.yaml and edit for your machine.
+openfast_executable: /home/USER/projects/openfast/build/glue-codes/openfast/openfast
+turbsim_executable: /home/USER/projects/openfast/build/modules/turbsim/turbsim
+openfast_templates: /home/USER/projects/openfast-models
+output_directory: ./outputs
