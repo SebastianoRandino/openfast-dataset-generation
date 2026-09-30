@@ -22,7 +22,7 @@ Cartesian or paired sweeps into deterministic `case_00001` records.  A resolved
 case is scientific metadata, not a generated OpenFAST directory.  Generated files,
 simulation outputs, and reduced datasets will remain separate future stages.
 
-## Step 3A wind planning
+## TurbSim wind lifecycle
 
 `resolve_campaign` produces `ResolvedCase` objects. The pure wind API converts
 those cases into `WindRealization` objects, deduplicates them by their effective
@@ -40,7 +40,7 @@ The wind configuration keeps three concerns explicit:
 
 - `wind.metadata` contains campaign labels and provenance that must not affect wind identity.
 - `wind.turbsim.overrides` contains only deliberate TurbSim parameter overrides; these are part of wind identity and are validated against the concrete template during rendering.
-- `wind.template_id` is a portable logical reference. Resolving it to a machine-specific template path belongs to a future preparation/execution layer; Step 3A accepts template text or a concrete path directly.
+- `wind.template_id` is a portable logical reference. `configs/paths.yaml` resolves it through `templates.turbsim`; its absolute local path never contributes to a scientific hash.
 
 For IEC turbulent winds, the domain keeps three distinct concepts explicit:
 `wind.spectral_model` maps to TurbSim `TurbModel` (for example `IECKAI`),
@@ -48,6 +48,19 @@ For IEC turbulent winds, the domain keeps three distinct concepts explicit:
 `1ETM`), and `wind.iec_turbulence_class` maps to `IECturbc` (for example
 `A`, `B`, or `C`). The renderer performs this final label mapping. All three
 values contribute to wind identity when they can change the generated field.
+
+Step 3B supplies an explicit per-realization lifecycle:
+`ResolvedCase -> WindRealization -> prepare_turbsim_realization -> run_turbsim -> wind.bts`.
+Preparation resolves the ignored local template and executable, renders
+`outputs/wind/wind_<scientific-hash>/turbsim.inp`, and writes initial metadata.
+Execution is a separate opt-in subprocess in that directory. TurbSim's natural
+`turbsim.bts` output is normalized to stable `wind.bts`; the log and checksummed
+provenance remain alongside it. One BTS can therefore be shared by many OpenFAST
+cases. A checksum-consistent existing BTS is reused; an inconsistent one requires
+explicit `force=True` to rebuild.
+
+Unit tests use fake executables only. Real TurbSim runs are deliberate integration
+actions, never a test-suite side effect. Generated outputs remain ignored.
 
 For a compact illustrative profile, see `configs/campaigns/example_floating_turbulent.yaml`.
 It is explicitly not a validated default.  The legacy-compatible profile is a

@@ -1,5 +1,8 @@
-# Copy this file to configs/paths.yaml and edit for your machine.
-openfast_executable: /home/USER/projects/openfast/build/glue-codes/openfast/openfast
-turbsim_executable: /home/USER/projects/openfast/build/modules/turbsim/turbsim
-openfast_templates: /home/USER/projects/openfast-models
-output_directory: ./outputs
+# Copy this file to configs/paths.yaml and edit for your machine. It is ignored by Git.
+executables:
+  turbsim: /path/to/openfast/build/modules/turbsim/turbsim
+templates:
+  turbsim:
+    legacy-iea15mw-turbsim-v2: /path/to/validated/TurbSim.inp
+outputs:
+  root: ./outputs
