@@ -12,16 +12,18 @@ from openfast_dataset.wind.models import WindRealization
 def _template(root: Path) -> Path:
     (root / "main").mkdir(parents=True)
     (root / "common").mkdir()
-    (root / "main" / "model.fst").write_text('10 TMax - time\n0.01 DT - dt\n0.1 DT_Out - output\n"../common/Inflow.dat" InflowFile - file\n"SeaState.dat" SeaStFile - sea\n', encoding="utf-8")
+    (root / "main" / "model.fst").write_text('10 TMax - time\n0.01 DT - dt\n0.1 DT_Out - output\n"../common/Inflow.dat" InflowFile - file\n"SeaState.dat" SeaStFile - sea\n"ServoDyn.dat" ServoFile - servo\n', encoding="utf-8")
     (root / "main" / "SeaState.dat").write_text('2 WaveMod\n1 WaveHs\n8 WaveTp\nDEFAULT WavePkShp\n0 WaveDir\n1 WaveSeed(1)\nRANLUX WaveSeed(2)\n10 WaveTMax\n0.25 WaveDT\n', encoding="utf-8")
     (root / "common" / "Inflow.dat").write_text('1 WindType - type\n8 HWindSpeed - steady\n"old.bts" FileName_BTS - bts\n', encoding="utf-8")
+    (root / "main" / "ServoDyn.dat").write_bytes(b"DLL_DT preserved exactly\n")
+    (root / "main" / "DISCON.IN").write_bytes(b"baseline DISCON preserved exactly\n")
     return root
 
 
 def _case(*, kind="turbulent", case_id="case_00001") -> ResolvedCase:
     wind = {"kind": kind, "speed_mps": 12.0, "bts_path": None}
     if kind == "external": wind["bts_path"] = "external.bts"
-    return ResolvedCase(case_id, "train", {"model": "test", "model_configuration": {"openfast_template_id": "test", "openfast_primary_fst": "main/model.fst"}, "platform": {"kind": "fixed", "initial_conditions": {}}, "numerics": {"integration_dt_s": 0.025, "output_dt_s": 0.1, "duration_s": 120.0}, "wind": wind, "waves": {"kind": "none"}, "controller": {"kind": "none"}, "actuation": {"enabled": False}, "overrides": {}})
+    return ResolvedCase(case_id, "train", {"model": "test", "model_configuration": {"openfast_template_id": "test", "openfast_primary_fst": "main/model.fst"}, "platform": {"kind": "fixed", "initial_conditions": {}}, "numerics": {"integration_dt_s": 0.025, "output_dt_s": 0.1, "duration_s": 120.0}, "wind": wind, "waves": {"kind": "none"}, "controller": {"kind": "template"}, "actuation": {"enabled": False}, "overrides": {}})
 
 
 def _paths(template: Path, output: Path) -> MachinePaths:
@@ -69,9 +71,24 @@ def test_missing_bts_and_unresolved_dependencies_are_explicit(tmp_path: Path) ->
     with pytest.raises(ValidationError, match="BTS"):
         prepare_openfast_case(_case(), paths, realization)
     bts = paths.output_root / "wind" / realization.wind_id / "wind.bts"; bts.parent.mkdir(parents=True); bts.write_bytes(b"BTS")
-    case = _case(); case.scientific["waves"] = {"kind": "irregular", "significant_height_m": 2, "peak_period_s": 8, "spectrum": "JONSWAP", "seed": 1}; case.scientific["controller"] = {"kind": "rosco", "omega_pc": 0.1}
+    case = _case(); case.scientific["waves"] = {"kind": "irregular", "significant_height_m": 2, "peak_period_s": 8, "spectrum": "JONSWAP", "seed": 1}
     payload = json.loads(prepare_openfast_case(case, paths, realization).metadata_path.read_text())
-    assert set(payload["unresolved"]) == {"controller"}
+    assert payload["unresolved"] == {}
+    assert payload["controller"] == {"kind": "template", "policy": "preserved_from_openfast_template"}
+
+
+def test_template_controller_files_are_byte_identical(tmp_path: Path) -> None:
+    template = _template(tmp_path / "template"); paths = _paths(template, tmp_path / "outputs")
+    prepared = prepare_openfast_case(_case(kind="steady"), paths)
+    for name in ("ServoDyn.dat", "DISCON.IN"):
+        assert (prepared.workspace / "main" / name).read_bytes() == (template / "main" / name).read_bytes()
+    assert json.loads(prepared.metadata_path.read_text())["unresolved"] == {}
+
+
+def test_disabled_actuation_timestep_does_not_make_a_case_unresolved(tmp_path: Path) -> None:
+    template = _template(tmp_path / "template"); paths = _paths(template, tmp_path / "outputs")
+    case = _case(kind="steady"); case.scientific["numerics"]["actuator_dt_s"] = 0.01
+    assert prepare_openfast_case(case, paths).metadata_path.exists()
 
 
 def test_seastate_regular_and_irregular_mapping(tmp_path: Path) -> None:

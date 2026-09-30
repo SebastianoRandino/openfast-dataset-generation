@@ -5,7 +5,6 @@ numerics:
   integration_dt_s: 0.005
   duration_s: 1000.0
   output_dt_s: 0.02
-  controller_dt_s: 0.025
   actuator_dt_s: 0.01
   wind_dt_s: 0.05
   wave_dt_s: 0.05
@@ -30,14 +29,8 @@ waves:
   spectrum: JONSWAP
   direction_deg: 0.0
   seed_index: 1 # illustrative deterministic seed policy, not an environmental default
-controller:
-  kind: rosco
-  template: ROSCO.yaml
-  omega_pc: 0.10
-  zeta_pc: 0.8
-actuation:
-  enabled: true
-  delay_s: 0.0
+controller: {kind: template}
+actuation: {enabled: false}
 modules: {aerodynamics: true, servodyn: true, hydrodyn: true, mooring: true}
 splits: {train: {}, validation: {}, test: {}}
 case_groups:
@@ -46,7 +39,6 @@ case_groups:
       - mode: cartesian
         dimensions:
           wind.speed_mps: [10.0, 12.0]
-          controller.omega_pc: [0.05, 0.10]
           wind.seed_index: [1, 2]
   - split: validation
     fixed: {wind.seed_index: 3}

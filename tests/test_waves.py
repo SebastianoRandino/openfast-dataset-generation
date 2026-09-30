@@ -14,8 +14,8 @@ def _case(**changes) -> ResolvedCase:
 
 
 def test_wave_identity_deduplicates_only_wave_science() -> None:
-    first = _case(controller={"omega_pc": 0.1}, wind={"seed": 1})
-    second = _case(case_id="case_00002", controller={"omega_pc": 0.2}, wind={"seed": 2})
+    first = _case(controller={"kind": "template"}, wind={"seed": 1})
+    second = _case(case_id="case_00002", controller={"kind": "template"}, wind={"seed": 2})
     plan = plan_waves([first, second])
     assert len(plan.realizations) == 1
     for field, value in (("seed", -13), ("significant_height_m", 3.0), ("peak_period_s", 9.0), ("direction_deg", 10.0), ("spectrum", "PIERSON-MOSKOWITZ"), ("peak_shape", 2.0)):

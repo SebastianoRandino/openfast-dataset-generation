@@ -208,12 +208,6 @@ def prepare_openfast_case(case: ResolvedCase, paths: MachinePaths, realization: 
         _link_wind(wind_source, local_bts)
         for field, value in (("WindType", 3), ("FileName_BTS", "Wind/wind.bts")):
             patch_openfast_field(inflow, field, value); patched.append({"file": inflow.relative_to(workspace.resolve()).as_posix(), "field": field})
-    controller = case.scientific["controller"]
-    controller_dt = case.scientific["numerics"].get("controller_dt_s")
-    if controller["kind"] == "rosco" and controller_dt is not None:
-        servo = _referenced_file(fst, "ServoFile")
-        patch_openfast_field(servo, "DLL_DT", controller_dt)
-        patched.append({"file": servo.relative_to(workspace.resolve()).as_posix(), "field": "DLL_DT"})
     patched.extend(_patch_waves(fst, workspace, wave_realization))
     overrides = case.scientific.get("overrides", {}).get("openfast", {})
     if overrides:
@@ -226,10 +220,6 @@ def prepare_openfast_case(case: ResolvedCase, paths: MachinePaths, realization: 
             for field, value in fields.items():
                 patch_openfast_field(files[name], field, value); patched.append({"file": files[name].relative_to(workspace.resolve()).as_posix(), "field": field})
     unresolved: dict[str, str] = {}
-    if controller["kind"] != "none" and (controller.get("omega_pc") is not None or controller.get("zeta_pc") is not None or controller.get("overrides")):
-        unresolved["controller"] = "ROSCO/controller parameter mapping requires the controller integration layer; copied template settings were preserved"
-    if case.scientific["numerics"].get("actuator_dt_s") is not None:
-        unresolved["actuator"] = "no actuator update field is represented by the current ROSCO/OpenFAST template"
-    metadata = {"case_id": case.case_id, "campaign_provenance": case.provenance, "resolved_scientific_case": case.normalized(), "openfast_template_id": template_id, "template_path": str(template), "template_checksum_sha256": template_checksum, "primary_fst": relative_fst.as_posix(), "integration_dt_s": case.scientific["numerics"]["integration_dt_s"], "output_dt_s": case.scientific["numerics"].get("output_dt_s"), "duration_s": case.scientific["numerics"]["duration_s"], "clock_mapping": {"integration_dt_s": "OpenFAST .fst DT", "output_dt_s": "OpenFAST .fst DT_Out", "controller_dt_s": "ServoDyn DLL_DT for ROSCO Bladed-DLL", "actuator_dt_s": "unmapped by current controller architecture", "wind_dt_s": "TurbSim realization input, not patched here", "wave_dt_s": "SeaState WaveDT when explicitly configured; otherwise template policy"}, "wind_kind": wind["kind"], "wind_realization_id": wind_id, "wind_bts_checksum_sha256": wind_checksum, "wave_kind": wave_realization.kind, "wave_realization_id": wave_realization.wave_id, "wave_scientific_parameters": wave_realization.content, "seastate_file": _seastate_path(fst).relative_to(workspace.resolve()).as_posix(), "controller_configuration": controller, "unresolved": unresolved, "patched_fields": patched, "preparation_identity": identity, "status": "prepared" if not unresolved else "prepared_with_unresolved_dependencies"}
+    metadata = {"case_id": case.case_id, "campaign_provenance": case.provenance, "resolved_scientific_case": case.normalized(), "openfast_template_id": template_id, "template_path": str(template), "template_checksum_sha256": template_checksum, "primary_fst": relative_fst.as_posix(), "integration_dt_s": case.scientific["numerics"]["integration_dt_s"], "output_dt_s": case.scientific["numerics"].get("output_dt_s"), "duration_s": case.scientific["numerics"]["duration_s"], "clock_mapping": {"integration_dt_s": "OpenFAST .fst DT", "output_dt_s": "OpenFAST .fst DT_Out", "actuator_dt_s": "unmapped; active actuation is unsupported", "wind_dt_s": "TurbSim realization input, not patched here", "wave_dt_s": "SeaState WaveDT when explicitly configured; otherwise template policy"}, "wind_kind": wind["kind"], "wind_realization_id": wind_id, "wind_bts_checksum_sha256": wind_checksum, "wave_kind": wave_realization.kind, "wave_realization_id": wave_realization.wave_id, "wave_scientific_parameters": wave_realization.content, "seastate_file": _seastate_path(fst).relative_to(workspace.resolve()).as_posix(), "controller": {"kind": "template", "policy": "preserved_from_openfast_template"}, "unresolved": unresolved, "patched_fields": patched, "preparation_identity": identity, "status": "prepared" if not unresolved else "prepared_with_unresolved_dependencies"}
     metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return PreparedOpenFASTCase(case, workspace, fst, metadata_path, False)

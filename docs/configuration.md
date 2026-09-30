@@ -10,10 +10,9 @@ and output paths.  `configs/models/` and `configs/campaigns/` are portable and
 version controlled.  A campaign points at a model metadata file using `model:`.
 
 `numerics` names independent clocks: `integration_dt_s`, `output_dt_s`,
-`controller_dt_s`, `actuator_dt_s`, `wind_dt_s`, `wave_dt_s`, duration, and optional
-discard time.  They are intentionally not aliases.
-`numerics` is the only source of simulation clocks: controller and actuator
-configuration contains model/physical settings, never duplicate update steps.
+`actuator_dt_s`, `wind_dt_s`, `wave_dt_s`, duration, and optional discard time.
+They are intentionally not aliases. Controller timing is deliberately absent: it
+is part of the validated OpenFAST model template in the current implementation.
 Platform kind and waves are also independent: a fixed-bottom model can use waves
 and active hydrodynamics when its template/modules support them.
 
@@ -65,3 +64,11 @@ actions, never a test-suite side effect. Generated outputs remain ignored.
 For a compact illustrative profile, see `configs/campaigns/example_floating_turbulent.yaml`.
 It is explicitly not a validated default.  The legacy-compatible profile is a
 regression reference, not a framework default.
+
+## Controller policy
+
+The current controller API is `controller: {kind: template}`. Case preparation
+copies the selected OpenFAST model tree and preserves its ROSCO, ServoDyn, and
+DISCON configuration byte-for-byte. Controller retuning, DISCON generation, and
+controller-timestep changes are intentionally outside the current implementation;
+they can be added later as a dedicated controller configuration layer.

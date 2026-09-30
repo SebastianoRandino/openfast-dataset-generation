@@ -55,7 +55,7 @@ def test_identity_is_deterministic_and_excludes_case_metadata() -> None:
     second = deepcopy(first)
     second = second.__class__("case_00002", "test", deepcopy(second.scientific), {"source": "other"})
     second.scientific["wind"]["metadata"]["dlc"] = "DLC16"
-    second.scientific["controller"] = {"omega_pc": 0.1}
+    second.scientific["controller"] = {"kind": "template"}
     second.scientific["waves"] = {"significant_height_m": 2.0}
     plan = plan_winds([first, second])
     assert len(plan.realizations) == 1

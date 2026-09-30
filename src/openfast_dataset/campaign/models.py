@@ -24,7 +24,6 @@ class TimeScales:
     integration_dt_s: float
     duration_s: float
     output_dt_s: float | None = None
-    controller_dt_s: float | None = None
     actuator_dt_s: float | None = None
     wind_dt_s: float | None = None
     wave_dt_s: float | None = None
@@ -33,7 +32,7 @@ class TimeScales:
     def validate(self) -> None:
         _positive("numerics.integration_dt_s", self.integration_dt_s)
         _positive("numerics.duration_s", self.duration_s)
-        for key in ("output_dt_s", "controller_dt_s", "actuator_dt_s", "wind_dt_s", "wave_dt_s"):
+        for key in ("output_dt_s", "actuator_dt_s", "wind_dt_s", "wave_dt_s"):
             value = getattr(self, key)
             if value is not None:
                 _positive(f"numerics.{key}", value)
@@ -155,21 +154,11 @@ class Waves:
 
 @dataclass(frozen=True)
 class Controller:
-    kind: Literal["none", "rosco", "custom"] = "none"
-    template: str | None = None
-    omega_pc: float | None = None
-    zeta_pc: float | None = None
-    overrides: dict[str, Any] = field(default_factory=dict)
+    kind: Literal["template"] = "template"
 
     def validate(self) -> None:
-        if self.kind not in {"none", "rosco", "custom"}:
-            raise ValidationError("controller.kind must be none, rosco, or custom")
-        if self.kind == "rosco" and not self.template:
-            raise ValidationError("ROSCO controller requires controller.template")
-        if self.omega_pc is not None:
-            _positive("controller.omega_pc", self.omega_pc)
-        if self.zeta_pc is not None:
-            _positive("controller.zeta_pc", self.zeta_pc)
+        if self.kind != "template":
+            raise ValidationError("controller.kind must be template")
 
 
 @dataclass(frozen=True)
@@ -182,6 +171,8 @@ class Actuation:
     model: str | None = None
 
     def validate(self) -> None:
+        if self.enabled:
+            raise ValidationError("active actuation is not supported yet")
         if self.delay_s is not None and self.delay_s < 0:
             raise ValidationError("actuation.delay_s must be >= 0")
         if self.rate_limit is not None:

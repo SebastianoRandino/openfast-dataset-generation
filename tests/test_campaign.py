@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from openfast_dataset.campaign.models import ValidationError, Waves
+from openfast_dataset.campaign.models import Actuation, Controller, ValidationError, Waves
 from openfast_dataset.campaign.provenance import scientific_hash
 from openfast_dataset.campaign.resolver import resolve_campaign
 from openfast_dataset.config import load_campaign
@@ -15,10 +15,10 @@ def test_example_campaign_expands_deterministically() -> None:
     spec = load_campaign(ROOT / "configs/campaigns/example_floating_turbulent.yaml")
     first = resolve_campaign(spec)
     second = resolve_campaign(spec)
-    assert [case.case_id for case in first] == [f"case_{i:05d}" for i in range(1, 11)]
+    assert [case.case_id for case in first] == [f"case_{i:05d}" for i in range(1, 7)]
     assert [case.scientific for case in first] == [case.scientific for case in second]
     assert {case.split for case in first} == {"train", "validation", "test"}
-    assert first[0].scientific["numerics"]["controller_dt_s"] != first[0].scientific["numerics"]["actuator_dt_s"]
+    assert "controller_dt_s" not in first[0].scientific["numerics"]
     assert "update_dt_s" not in first[0].scientific["actuation"]
 
 
@@ -63,8 +63,8 @@ def test_resolved_sweep_values_are_validated() -> None:
     bad_wind = replace(spec, case_groups=[{"fixed": {"wind.speed_mps": -10}}])
     with pytest.raises(ValidationError, match=r"resolved case_00001: wind.speed_mps"):
         resolve_campaign(bad_wind)
-    bad_controller = replace(spec, case_groups=[{"fixed": {"controller.omega_pc": -0.1}}])
-    with pytest.raises(ValidationError, match=r"resolved case_00001: controller.omega_pc"):
+    bad_controller = replace(spec, case_groups=[{"fixed": {"controller.kind": "rosco"}}])
+    with pytest.raises(ValidationError, match=r"resolved case_00001: controller.kind"):
         resolve_campaign(bad_controller)
 
 
@@ -82,3 +82,11 @@ def test_regular_and_irregular_wave_validation() -> None:
         Waves(kind="regular", significant_height_m=2.0, peak_period_s=8.0).validate()
     with pytest.raises(ValidationError, match="spectrum"):
         Waves(kind="irregular", significant_height_m=2.0, peak_period_s=8.0).validate()
+
+
+def test_template_controller_is_the_only_current_mode() -> None:
+    Controller(kind="template").validate()
+    with pytest.raises(ValidationError, match="template"):
+        Controller(kind="rosco").validate()
+    with pytest.raises(ValidationError, match="active actuation"):
+        Actuation(enabled=True).validate()
