@@ -1,8 +1,9 @@
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from openfast_dataset.campaign.models import ValidationError
+from openfast_dataset.campaign.models import ValidationError, Waves
 from openfast_dataset.campaign.provenance import scientific_hash
 from openfast_dataset.campaign.resolver import resolve_campaign
 from openfast_dataset.config import load_campaign
@@ -18,7 +19,8 @@ def test_example_campaign_expands_deterministically() -> None:
     assert [case.case_id for case in first] == [f"case_{i:05d}" for i in range(1, 11)]
     assert [case.scientific for case in first] == [case.scientific for case in second]
     assert {case.split for case in first} == {"train", "validation", "test"}
-    assert first[0].scientific["numerics"]["controller_dt_s"] != first[0].scientific["actuation"]["update_dt_s"]
+    assert first[0].scientific["numerics"]["controller_dt_s"] != first[0].scientific["numerics"]["actuator_dt_s"]
+    assert "update_dt_s" not in first[0].scientific["actuation"]
 
 
 def test_campaign_validation_messages() -> None:
@@ -49,3 +51,35 @@ def test_paired_sweep_rejects_mismatched_dimensions() -> None:
     bad = spec.__class__(**{**spec.__dict__, "case_groups": [bad_group]})
     with pytest.raises(ValidationError, match="equal lengths"):
         resolve_campaign(bad)
+
+
+def test_fixed_and_floating_platforms_can_both_have_waves() -> None:
+    spec = load_campaign(ROOT / "configs/campaigns/example_floating_turbulent.yaml")
+    assert resolve_campaign(spec)
+    assert resolve_campaign(replace(spec, platform=replace(spec.platform, kind="fixed")))
+
+
+def test_resolved_sweep_values_are_validated() -> None:
+    spec = load_campaign(ROOT / "configs/campaigns/example_floating_turbulent.yaml")
+    bad_wind = replace(spec, case_groups=[{"fixed": {"wind.speed_mps": -10}}])
+    with pytest.raises(ValidationError, match=r"resolved case_00001: wind.speed_mps"):
+        resolve_campaign(bad_wind)
+    bad_controller = replace(spec, case_groups=[{"fixed": {"controller.omega_pc": -0.1}}])
+    with pytest.raises(ValidationError, match=r"resolved case_00001: controller.omega_pc"):
+        resolve_campaign(bad_controller)
+
+
+def test_structured_path_typo_is_rejected() -> None:
+    spec = load_campaign(ROOT / "configs/campaigns/example_floating_turbulent.yaml")
+    bad = replace(spec, case_groups=[{"fixed": {"controller.omeg_pc": 0.1}}])
+    with pytest.raises(ValidationError, match="controller.omeg_pc"):
+        resolve_campaign(bad)
+
+
+def test_regular_and_irregular_wave_validation() -> None:
+    Waves(kind="regular", wave_height_m=2.0, period_s=8.0).validate()
+    Waves(kind="irregular", significant_height_m=2.0, peak_period_s=8.0, spectrum="JONSWAP").validate()
+    with pytest.raises(ValidationError, match="wave_height_m"):
+        Waves(kind="regular", significant_height_m=2.0, peak_period_s=8.0).validate()
+    with pytest.raises(ValidationError, match="spectrum"):
+        Waves(kind="irregular", significant_height_m=2.0, peak_period_s=8.0).validate()

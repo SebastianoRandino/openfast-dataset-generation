@@ -5,10 +5,33 @@ from copy import deepcopy
 from itertools import product
 from typing import Any
 
-from .models import ResolvedCase, ValidationError
+from .models import ResolvedCase, ValidationError, validate_resolved_scientific
+
+
+_FREE_FORM_PREFIXES = {
+    "turbine", "platform.initial_conditions", "wind.grid", "wind.overrides",
+    "waves.parameters", "controller.overrides", "modules", "overrides",
+}
+_STRUCTURED_PATHS = {
+    "platform": {"kind", "hydrodynamics_template", "mooring_template", "initial_conditions"},
+    "numerics": {"integration_dt_s", "duration_s", "output_dt_s", "controller_dt_s", "actuator_dt_s", "wind_dt_s", "wave_dt_s", "discard_transient_s"},
+    "wind": {"kind", "speed_mps", "reference_height_m", "direction_deg", "shear_exponent", "turbulence_model", "turbulence_class", "seed_index", "seed", "bts_path", "grid", "overrides"},
+    "waves": {"kind", "wave_height_m", "period_s", "significant_height_m", "peak_period_s", "spectrum", "direction_deg", "seed", "external_reference", "parameters"},
+    "controller": {"kind", "template", "omega_pc", "zeta_pc", "overrides"},
+    "actuation": {"enabled", "delay_s", "rate_limit", "minimum", "maximum", "model"},
+}
+
+
+def _validate_path(path: str) -> None:
+    if any(path == prefix or path.startswith(f"{prefix}.") for prefix in _FREE_FORM_PREFIXES):
+        return
+    root, *rest = path.split(".")
+    if root not in _STRUCTURED_PATHS or len(rest) != 1 or rest[0] not in _STRUCTURED_PATHS[root]:
+        raise ValidationError(f"unsupported structured sweep/override path: {path}")
 
 
 def _set_path(data: dict[str, Any], path: str, value: Any) -> None:
+    _validate_path(path)
     parts = path.split(".")
     target = data
     for part in parts[:-1]:
@@ -70,5 +93,9 @@ def resolve_campaign(spec: Any) -> list[ResolvedCase]:
         if split is not None and split not in {"train", "validation", "test"}:
             raise ValidationError(f"case split must be train, validation, or test, got {split!r}")
         scientific = _apply(spec.base_scientific(), values)
+        try:
+            validate_resolved_scientific(scientific)
+        except ValidationError as error:
+            raise ValidationError(f"resolved case_{number:05d}: {error}") from error
         cases.append(ResolvedCase(f"case_{number:05d}", split, scientific, spec.provenance))
     return cases

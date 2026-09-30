@@ -48,8 +48,6 @@ class Platform:
     def validate(self) -> None:
         if self.kind not in {"floating", "fixed"}:
             raise ValidationError("platform.kind must be 'floating' or 'fixed'")
-        if self.kind == "fixed" and (self.hydrodynamics_template or self.mooring_template):
-            raise ValidationError("platform hydrodynamics_template/mooring_template apply only to floating platforms")
 
 
 @dataclass(frozen=True)
@@ -84,6 +82,8 @@ class Wind:
 @dataclass(frozen=True)
 class Waves:
     kind: Literal["none", "regular", "irregular", "external"] = "none"
+    wave_height_m: float | None = None
+    period_s: float | None = None
     significant_height_m: float | None = None
     peak_period_s: float | None = None
     spectrum: str | None = None
@@ -95,7 +95,10 @@ class Waves:
     def validate(self) -> None:
         if self.kind not in {"none", "regular", "irregular", "external"}:
             raise ValidationError("waves.kind must be none, regular, irregular, or external")
-        if self.kind in {"regular", "irregular"}:
+        if self.kind == "regular":
+            _positive("waves.wave_height_m", self.wave_height_m)
+            _positive("waves.period_s", self.period_s)
+        if self.kind == "irregular":
             _positive("waves.significant_height_m", self.significant_height_m)
             _positive("waves.peak_period_s", self.peak_period_s)
         if self.kind == "irregular" and not self.spectrum:
@@ -126,7 +129,6 @@ class Controller:
 @dataclass(frozen=True)
 class Actuation:
     enabled: bool = False
-    update_dt_s: float | None = None
     delay_s: float | None = None
     rate_limit: float | None = None
     minimum: float | None = None
@@ -134,10 +136,6 @@ class Actuation:
     model: str | None = None
 
     def validate(self) -> None:
-        if self.enabled and self.update_dt_s is None:
-            raise ValidationError("enabled actuation requires actuation.update_dt_s")
-        if self.update_dt_s is not None:
-            _positive("actuation.update_dt_s", self.update_dt_s)
         if self.delay_s is not None and self.delay_s < 0:
             raise ValidationError("actuation.delay_s must be >= 0")
         if self.rate_limit is not None:
@@ -183,8 +181,6 @@ class CampaignSpecification:
             raise ValidationError("campaign.model is required")
         self.platform.validate(); self.numerics.validate(); self.wind.validate(); self.waves.validate()
         self.controller.validate(); self.actuation.validate()
-        if self.waves.kind != "none" and self.platform.kind != "floating":
-            raise ValidationError("waves require platform.kind: floating")
         unknown = set(self.splits) - {"train", "validation", "test"}
         if unknown:
             raise ValidationError(f"unsupported split names: {sorted(unknown)}")
@@ -196,3 +192,18 @@ class CampaignSpecification:
             "controller": asdict(self.controller), "actuation": asdict(self.actuation),
             "modules": self.modules, "overrides": self.overrides,
         }
+
+
+def validate_resolved_scientific(scientific: dict[str, Any]) -> None:
+    """Validate one fully-expanded case using the same typed domain model."""
+    try:
+        Platform(**scientific["platform"]).validate()
+        TimeScales(**scientific["numerics"]).validate()
+        Wind(**scientific["wind"]).validate()
+        Waves(**scientific["waves"]).validate()
+        Controller(**scientific["controller"]).validate()
+        Actuation(**scientific["actuation"]).validate()
+    except KeyError as error:
+        raise ValidationError(f"resolved case is missing {error.args[0]!r}") from error
+    except TypeError as error:
+        raise ValidationError(f"resolved case has an unsupported structured field: {error}") from error

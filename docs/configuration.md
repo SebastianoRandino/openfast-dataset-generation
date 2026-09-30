@@ -12,6 +12,10 @@ version controlled.  A campaign points at a model metadata file using `model:`.
 `numerics` names independent clocks: `integration_dt_s`, `output_dt_s`,
 `controller_dt_s`, `actuator_dt_s`, `wind_dt_s`, `wave_dt_s`, duration, and optional
 discard time.  They are intentionally not aliases.
+`numerics` is the only source of simulation clocks: controller and actuator
+configuration contains model/physical settings, never duplicate update steps.
+Platform kind and waves are also independent: a fixed-bottom model can use waves
+and active hydrodynamics when its template/modules support them.
 
 Campaigns are specifications; `resolve_campaign` expands `case_groups` and their
 Cartesian or paired sweeps into deterministic `case_00001` records.  A resolved
