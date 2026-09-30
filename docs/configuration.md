@@ -22,6 +22,26 @@ Cartesian or paired sweeps into deterministic `case_00001` records.  A resolved
 case is scientific metadata, not a generated OpenFAST directory.  Generated files,
 simulation outputs, and reduced datasets will remain separate future stages.
 
+## Step 3A wind planning
+
+`resolve_campaign` produces `ResolvedCase` objects. The pure wind API converts
+those cases into `WindRealization` objects, deduplicates them by their effective
+wind-generation parameters, renders TurbSim input text from an explicitly supplied
+template, and writes a JSON/CSV wind manifest. This stage does not discover machine
+paths, execute TurbSim, or create BTS files.
+
+Wind realization identity represents the physics and generation configuration that
+determines the wind field, not the simulation case that consumes it. Campaign
+metadata such as DLC labels, split, controller settings, wave settings, and case IDs
+is excluded. For example, the same turbulent wind used by 3 controllers under 2 wave
+conditions represents 6 simulation cases but only 1 wind realization.
+
+The wind configuration keeps three concerns explicit:
+
+- `wind.metadata` contains campaign labels and provenance that must not affect wind identity.
+- `wind.turbsim.overrides` contains only deliberate TurbSim parameter overrides; these are part of wind identity and are validated against the concrete template during rendering.
+- `wind.template_id` is a portable logical reference. Resolving it to a machine-specific template path belongs to a future preparation/execution layer; Step 3A accepts template text or a concrete path directly.
+
 For a compact illustrative profile, see `configs/campaigns/example_floating_turbulent.yaml`.
 It is explicitly not a validated default.  The legacy-compatible profile is a
 regression reference, not a framework default.

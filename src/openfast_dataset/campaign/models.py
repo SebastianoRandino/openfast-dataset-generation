@@ -11,7 +11,11 @@ class ValidationError(ValueError):
 
 
 def _positive(name: str, value: float | None) -> None:
-    if value is None or value <= 0:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        raise ValidationError(f"{name} must be a positive number") from None
+    if numeric <= 0:
         raise ValidationError(f"{name} must be positive")
 
 
@@ -62,12 +66,23 @@ class Wind:
     seed_index: int | None = None
     seed: int | None = None
     bts_path: str | None = None
+    generation_duration_s: float | None = None
+    usable_duration_s: float | str | None = None
+    template_id: str | None = None
     grid: dict[str, Any] = field(default_factory=dict)
-    overrides: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    turbsim: dict[str, Any] = field(default_factory=dict)
 
     def validate(self) -> None:
         if self.kind not in {"steady", "turbulent", "external"}:
             raise ValidationError("wind.kind must be steady, turbulent, or external")
+        if not isinstance(self.metadata, dict):
+            raise ValidationError("wind.metadata must be a mapping")
+        if not isinstance(self.turbsim, dict):
+            raise ValidationError("wind.turbsim must be a mapping")
+        overrides = self.turbsim.get("overrides", {})
+        if not isinstance(overrides, dict):
+            raise ValidationError("wind.turbsim.overrides must be a mapping")
         if self.kind in {"steady", "turbulent"}:
             _positive("wind.speed_mps", self.speed_mps)
         if self.kind == "turbulent":
@@ -75,6 +90,17 @@ class Wind:
                 raise ValidationError("turbulent wind requires wind.turbulence_model")
             if self.seed_index is None and self.seed is None:
                 raise ValidationError("turbulent wind requires wind.seed_index or wind.seed")
+            if self.generation_duration_s is not None:
+                _positive("wind.generation_duration_s", self.generation_duration_s)
+            if self.usable_duration_s is not None and self.usable_duration_s != "ALL":
+                _positive("wind.usable_duration_s", self.usable_duration_s)
+            if not isinstance(self.metadata, dict):
+                raise ValidationError("wind.metadata must be a mapping")
+            if not isinstance(self.turbsim, dict):
+                raise ValidationError("wind.turbsim must be a mapping")
+            overrides = self.turbsim.get("overrides", {})
+            if not isinstance(overrides, dict):
+                raise ValidationError("wind.turbsim.overrides must be a mapping")
         if self.kind == "external" and not self.bts_path:
             raise ValidationError("external wind requires wind.bts_path")
 

@@ -16,7 +16,12 @@ wind:
   turbulence_model: NTM
   turbulence_class: B
   seed_index: 1
-  grid: {num_y: 11, num_z: 11}
+  seed: 100001
+  reference_height_m: 150.0
+  generation_duration_s: 1000.0
+  usable_duration_s: ALL
+  template_id: example-iea15mw-turbsim-v2
+  grid: {num_y: 11, num_z: 11, width_m: 300.0, height_m: 300.0}
 waves:
   kind: irregular
   significant_height_m: 2.0

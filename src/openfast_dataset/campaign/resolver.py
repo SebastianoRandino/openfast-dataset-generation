@@ -7,15 +7,15 @@ from typing import Any
 
 from .models import ResolvedCase, ValidationError, validate_resolved_scientific
 
-
 _FREE_FORM_PREFIXES = {
-    "turbine", "platform.initial_conditions", "wind.grid", "wind.overrides",
+    "turbine", "platform.initial_conditions", "wind.grid", "wind.metadata",
+    "wind.turbsim", "wind.turbsim.overrides",
     "waves.parameters", "controller.overrides", "modules", "overrides",
 }
 _STRUCTURED_PATHS = {
     "platform": {"kind", "hydrodynamics_template", "mooring_template", "initial_conditions"},
     "numerics": {"integration_dt_s", "duration_s", "output_dt_s", "controller_dt_s", "actuator_dt_s", "wind_dt_s", "wave_dt_s", "discard_transient_s"},
-    "wind": {"kind", "speed_mps", "reference_height_m", "direction_deg", "shear_exponent", "turbulence_model", "turbulence_class", "seed_index", "seed", "bts_path", "grid", "overrides"},
+    "wind": {"kind", "speed_mps", "reference_height_m", "direction_deg", "shear_exponent", "turbulence_model", "turbulence_class", "seed_index", "seed", "bts_path", "generation_duration_s", "usable_duration_s", "template_id", "grid", "metadata", "turbsim"},
     "waves": {"kind", "wave_height_m", "period_s", "significant_height_m", "peak_period_s", "spectrum", "direction_deg", "seed", "external_reference", "parameters"},
     "controller": {"kind", "template", "omega_pc", "zeta_pc", "overrides"},
     "actuation": {"enabled", "delay_s", "rate_limit", "minimum", "maximum", "model"},

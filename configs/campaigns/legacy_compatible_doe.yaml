@@ -11,7 +11,19 @@ numerics:
   controller_dt_s: 0.10
   output_dt_s: 0.10
   wind_dt_s: 0.10
-wind: {kind: turbulent, speed_mps: 6.0, turbulence_model: NTM, turbulence_class: B, seed_index: 1}
+wind:
+  kind: turbulent
+  speed_mps: 6.0
+  turbulence_model: NTM
+  turbulence_class: B
+  seed_index: 1
+  seed: 100001 # actual legacy RandSeed1; seed_index remains provenance only
+  reference_height_m: 150.0
+  generation_duration_s: 1000.0
+  usable_duration_s: ALL
+  template_id: legacy-iea15mw-turbsim-v2
+  grid: {num_y: 11, num_z: 11, width_m: 300.0, height_m: 300.0}
+  turbsim: {overrides: {RandSeed2: RanLux, TurbModel: IECKAI}}
 waves: {kind: irregular, significant_height_m: 1.18, peak_period_s: 8.31, spectrum: JONSWAP, seed: -499998999}
 controller: {kind: rosco, template: ROSCO.yaml, omega_pc: 0.20, zeta_pc: 0.8}
 actuation: {enabled: false}
@@ -38,15 +50,15 @@ test_seeds_actual: &test_seeds_actual [100005]
 test_wave_seed_indices: &test_wave_seed_indices [1005]
 test_wave_seeds: &test_wave_seeds [-499998995]
 case_groups:
-  - &dlc11_train {split: train, fixed: {wind.turbulence_model: NTM, wind.overrides.dlc: DLC11}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *normal_hs, waves.peak_period_s: *normal_tp}}, {mode: paired, dimensions: {wind.seed_index: *train_seeds, wind.seed: *train_seeds_actual, waves.parameters.seed_index: *train_wave_seed_indices, waves.seed: *train_wave_seeds}}]}
-  - {<<: *dlc11_train, fixed: {wind.turbulence_model: 1ETM, wind.overrides.dlc: DLC13}}
-  - {<<: *dlc11_train, fixed: {wind.turbulence_model: NTM, wind.overrides.dlc: DLC16}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *severe_hs, waves.peak_period_s: *severe_tp}}, {mode: paired, dimensions: {wind.seed_index: *train_seeds, wind.seed: *train_seeds_actual, waves.parameters.seed_index: *train_wave_seed_indices, waves.seed: *train_wave_seeds}}]}
-  - &dlc11_validation {split: validation, fixed: {wind.turbulence_model: NTM, wind.overrides.dlc: DLC11}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *normal_hs, waves.peak_period_s: *normal_tp}}, {mode: paired, dimensions: {wind.seed_index: *validation_seeds, wind.seed: *validation_seeds_actual, waves.parameters.seed_index: *validation_wave_seed_indices, waves.seed: *validation_wave_seeds}}]}
-  - {<<: *dlc11_validation, fixed: {wind.turbulence_model: 1ETM, wind.overrides.dlc: DLC13}}
-  - {<<: *dlc11_validation, fixed: {wind.turbulence_model: NTM, wind.overrides.dlc: DLC16}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *severe_hs, waves.peak_period_s: *severe_tp}}, {mode: paired, dimensions: {wind.seed_index: *validation_seeds, wind.seed: *validation_seeds_actual, waves.parameters.seed_index: *validation_wave_seed_indices, waves.seed: *validation_wave_seeds}}]}
-  - &dlc11_test {split: test, fixed: {wind.turbulence_model: NTM, wind.overrides.dlc: DLC11}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *normal_hs, waves.peak_period_s: *normal_tp}}, {mode: paired, dimensions: {wind.seed_index: *test_seeds, wind.seed: *test_seeds_actual, waves.parameters.seed_index: *test_wave_seed_indices, waves.seed: *test_wave_seeds}}]}
-  - {<<: *dlc11_test, fixed: {wind.turbulence_model: 1ETM, wind.overrides.dlc: DLC13}}
-  - {<<: *dlc11_test, fixed: {wind.turbulence_model: NTM, wind.overrides.dlc: DLC16}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *severe_hs, waves.peak_period_s: *severe_tp}}, {mode: paired, dimensions: {wind.seed_index: *test_seeds, wind.seed: *test_seeds_actual, waves.parameters.seed_index: *test_wave_seed_indices, waves.seed: *test_wave_seeds}}]}
+  - &dlc11_train {split: train, fixed: {wind.turbulence_model: NTM, wind.metadata.dlc: DLC11}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *normal_hs, waves.peak_period_s: *normal_tp}}, {mode: paired, dimensions: {wind.seed_index: *train_seeds, wind.seed: *train_seeds_actual, waves.parameters.seed_index: *train_wave_seed_indices, waves.seed: *train_wave_seeds}}]}
+  - {<<: *dlc11_train, fixed: {wind.turbulence_model: 1ETM, wind.metadata.dlc: DLC13}}
+  - {<<: *dlc11_train, fixed: {wind.turbulence_model: NTM, wind.metadata.dlc: DLC16}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *severe_hs, waves.peak_period_s: *severe_tp}}, {mode: paired, dimensions: {wind.seed_index: *train_seeds, wind.seed: *train_seeds_actual, waves.parameters.seed_index: *train_wave_seed_indices, waves.seed: *train_wave_seeds}}]}
+  - &dlc11_validation {split: validation, fixed: {wind.turbulence_model: NTM, wind.metadata.dlc: DLC11}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *normal_hs, waves.peak_period_s: *normal_tp}}, {mode: paired, dimensions: {wind.seed_index: *validation_seeds, wind.seed: *validation_seeds_actual, waves.parameters.seed_index: *validation_wave_seed_indices, waves.seed: *validation_wave_seeds}}]}
+  - {<<: *dlc11_validation, fixed: {wind.turbulence_model: 1ETM, wind.metadata.dlc: DLC13}}
+  - {<<: *dlc11_validation, fixed: {wind.turbulence_model: NTM, wind.metadata.dlc: DLC16}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *severe_hs, waves.peak_period_s: *severe_tp}}, {mode: paired, dimensions: {wind.seed_index: *validation_seeds, wind.seed: *validation_seeds_actual, waves.parameters.seed_index: *validation_wave_seed_indices, waves.seed: *validation_wave_seeds}}]}
+  - &dlc11_test {split: test, fixed: {wind.turbulence_model: NTM, wind.metadata.dlc: DLC11}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *normal_hs, waves.peak_period_s: *normal_tp}}, {mode: paired, dimensions: {wind.seed_index: *test_seeds, wind.seed: *test_seeds_actual, waves.parameters.seed_index: *test_wave_seed_indices, waves.seed: *test_wave_seeds}}]}
+  - {<<: *dlc11_test, fixed: {wind.turbulence_model: 1ETM, wind.metadata.dlc: DLC13}}
+  - {<<: *dlc11_test, fixed: {wind.turbulence_model: NTM, wind.metadata.dlc: DLC16}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *severe_hs, waves.peak_period_s: *severe_tp}}, {mode: paired, dimensions: {wind.seed_index: *test_seeds, wind.seed: *test_seeds_actual, waves.parameters.seed_index: *test_wave_seed_indices, waves.seed: *test_wave_seeds}}]}
 provenance:
   reference_legacy_script: generate_doe_dataset_splits_compatible.py
   openfast_version: null

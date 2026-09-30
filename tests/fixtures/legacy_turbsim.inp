@@ -1,0 +1,17 @@
+! Minimal fixture based on the fields patched by the legacy campaign script.
+100001 RandSeed1   - random seed
+"RanLux" RandSeed2   - random number generator
+11 NumGrid_Y       - grid points in Y
+11 NumGrid_Z       - grid points in Z
+0.1 TimeStep       - seconds
+1000.0 AnalysisTime - seconds
+"ALL" UsableTime   - seconds
+150.0 HubHt         - hub height
+300.0 GridHeight    - grid height
+300.0 GridWidth     - grid width
+"IECKAI" TurbModel - turbulence model
+"B" IECturbc       - turbulence class
+"NTM" IEC_WindType - IEC wind type
+150.0 RefHt         - reference height
+12.0 URef           - mean wind speed
+! unrelated template line must remain unchanged
