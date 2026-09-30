@@ -42,6 +42,13 @@ The wind configuration keeps three concerns explicit:
 - `wind.turbsim.overrides` contains only deliberate TurbSim parameter overrides; these are part of wind identity and are validated against the concrete template during rendering.
 - `wind.template_id` is a portable logical reference. Resolving it to a machine-specific template path belongs to a future preparation/execution layer; Step 3A accepts template text or a concrete path directly.
 
+For IEC turbulent winds, the domain keeps three distinct concepts explicit:
+`wind.spectral_model` maps to TurbSim `TurbModel` (for example `IECKAI`),
+`wind.iec_wind_type` maps to `IEC_WindType` (for example `NTM`, `ETM`, or
+`1ETM`), and `wind.iec_turbulence_class` maps to `IECturbc` (for example
+`A`, `B`, or `C`). The renderer performs this final label mapping. All three
+values contribute to wind identity when they can change the generated field.
+
 For a compact illustrative profile, see `configs/campaigns/example_floating_turbulent.yaml`.
 It is explicitly not a validated default.  The legacy-compatible profile is a
 regression reference, not a framework default.

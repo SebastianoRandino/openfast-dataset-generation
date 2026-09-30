@@ -61,8 +61,9 @@ class Wind:
     reference_height_m: float | None = None
     direction_deg: float | None = None
     shear_exponent: float | None = None
-    turbulence_model: str | None = None
-    turbulence_class: str | None = None
+    spectral_model: str | None = None
+    iec_wind_type: str | None = None
+    iec_turbulence_class: str | None = None
     seed_index: int | None = None
     seed: int | None = None
     bts_path: str | None = None
@@ -86,8 +87,12 @@ class Wind:
         if self.kind in {"steady", "turbulent"}:
             _positive("wind.speed_mps", self.speed_mps)
         if self.kind == "turbulent":
-            if not self.turbulence_model:
-                raise ValidationError("turbulent wind requires wind.turbulence_model")
+            if not self.spectral_model:
+                raise ValidationError("turbulent wind requires wind.spectral_model")
+            if not self.iec_wind_type:
+                raise ValidationError("turbulent wind requires wind.iec_wind_type")
+            if not self.iec_turbulence_class:
+                raise ValidationError("turbulent wind requires wind.iec_turbulence_class")
             if self.seed_index is None and self.seed is None:
                 raise ValidationError("turbulent wind requires wind.seed_index or wind.seed")
             if self.generation_duration_s is not None:

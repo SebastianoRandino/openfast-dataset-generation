@@ -13,8 +13,9 @@ numerics:
 wind:
   kind: turbulent
   speed_mps: 12.0
-  turbulence_model: NTM
-  turbulence_class: B
+  spectral_model: IECKAI
+  iec_wind_type: NTM
+  iec_turbulence_class: B
   seed_index: 1
   seed: 100001
   reference_height_m: 150.0

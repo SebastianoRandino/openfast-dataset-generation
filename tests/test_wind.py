@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from openfast_dataset.campaign.models import ValidationError, Wind
+from openfast_dataset.campaign.models import ResolvedCase, ValidationError, Wind
 from openfast_dataset.campaign.resolver import resolve_campaign
 from openfast_dataset.config import load_campaign
 from openfast_dataset.wind.manifest import write_manifest
@@ -24,8 +24,9 @@ def turbulent_case(**changes):
         "kind": "turbulent",
         "speed_mps": 12.0,
         "reference_height_m": 150.0,
-        "turbulence_model": "NTM",
-        "turbulence_class": "B",
+        "spectral_model": "IECKAI",
+        "iec_wind_type": "NTM",
+        "iec_turbulence_class": "B",
         "seed": 100001,
         "seed_index": 1,
         "generation_duration_s": 1000.0,
@@ -33,13 +34,11 @@ def turbulent_case(**changes):
         "template_id": "legacy-iea15mw-turbsim-v2",
         "grid": {"num_y": 11, "num_z": 11, "width_m": 300.0, "height_m": 300.0},
         "metadata": {"dlc": "DLC11"},
-        "turbsim": {"overrides": {"RandSeed2": "RanLux", "TurbModel": "IECKAI"}},
+        "turbsim": {"overrides": {"RandSeed2": "RanLux"}},
     }
     wind.update(changes.pop("wind", {}))
     scientific = {"wind": wind, "numerics": {"wind_dt_s": 0.1}}
     scientific.update(changes)
-    from openfast_dataset.campaign.models import ResolvedCase
-
     return ResolvedCase(case_id, split, scientific)
 
 
@@ -71,7 +70,9 @@ def test_identity_is_deterministic_and_excludes_case_metadata() -> None:
         ({"speed_mps": 14.0}, 2),
         ({"turbsim": {"overrides": {"TimeStep": 0.2}}}, 2),
         ({"grid": {"num_y": 13, "num_z": 11, "width_m": 300.0, "height_m": 300.0}}, 2),
-        ({"turbsim": {"overrides": {"TurbModel": "IECTM"}}}, 2),
+        ({"spectral_model": "IECTM"}, 2),
+        ({"iec_wind_type": "ETM"}, 2),
+        ({"iec_turbulence_class": "C"}, 2),
     ],
 )
 def test_generation_parameter_changes_identity(change, expected_unique) -> None:
@@ -86,8 +87,9 @@ def test_legacy_campaign_has_derived_unique_wind_count() -> None:
     scientific_combinations = {
         (
             case.scientific["wind"]["speed_mps"],
-            case.scientific["wind"]["turbulence_model"],
-            case.scientific["wind"]["turbulence_class"],
+            case.scientific["wind"]["spectral_model"],
+            case.scientific["wind"]["iec_wind_type"],
+            case.scientific["wind"]["iec_turbulence_class"],
             case.scientific["wind"]["seed"],
             case.scientific["wind"]["generation_duration_s"],
             case.scientific["wind"]["usable_duration_s"],
@@ -113,7 +115,7 @@ def test_invalid_turbulent_requirements_raise_validation_error() -> None:
 
 @pytest.mark.parametrize("field", ["generation_duration_s", "usable_duration_s"])
 def test_invalid_numeric_wind_configuration_is_validation_error(field) -> None:
-    wind = Wind(kind="turbulent", speed_mps=12.0, turbulence_model="NTM", seed=100001, **{field: "not-a-number"})
+    wind = Wind(kind="turbulent", speed_mps=12.0, spectral_model="IECKAI", iec_wind_type="NTM", iec_turbulence_class="B", seed=100001, **{field: "not-a-number"})
     with pytest.raises(ValidationError, match=field):
         wind.validate()
 
@@ -132,9 +134,17 @@ def test_renderer_matches_legacy_scientific_values_and_preserves_unrelated_text(
 
 def test_unknown_explicit_turbsim_override_fails() -> None:
     case = turbulent_case(wind={"turbsim": {"overrides": {"NotATurbSimField": 1}}})
-    with pytest.raises(ValueError, match="not present in the template"):
+    with pytest.raises(ValidationError, match="not present in the template"):
         render_turbsim_input(plan_winds([case]).realizations[0], FIXTURE.read_text(encoding="utf-8"))
 
+
+def test_renderer_expected_failures_use_validation_error() -> None:
+    steady = plan_winds([turbulent_case(wind={"kind": "steady", "speed_mps": 8.0})]).realizations[0]
+    with pytest.raises(ValidationError, match="only turbulent"):
+        render_turbsim_input(steady, FIXTURE.read_text(encoding="utf-8"))
+    incomplete = FIXTURE.read_text(encoding="utf-8").replace("URef", "MissingURef")
+    with pytest.raises(ValidationError, match="missing required labels"):
+        render_turbsim_input(plan_winds([turbulent_case()]).realizations[0], incomplete)
 
 def test_manifest_json_and_csv_contents(tmp_path: Path) -> None:
     plan = plan_winds([turbulent_case(), turbulent_case(case_id="case_00002", wind={"seed": 100002})])
@@ -153,7 +163,7 @@ def test_manifest_json_and_csv_contents(tmp_path: Path) -> None:
 def test_controller_rom_wind_is_representable() -> None:
     case = turbulent_case(wind={
         "speed_mps": 10.0,
-        "turbulence_class": "B",
+        "iec_turbulence_class": "B",
         "seed": 110101,
         "reference_height_m": 150.0,
         "generation_duration_s": 1000.0,

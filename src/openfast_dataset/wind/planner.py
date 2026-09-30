@@ -49,8 +49,9 @@ def _content(case: ResolvedCase) -> tuple[str, dict[str, Any]]:
     dt = overrides.get("TimeStep", case.scientific["numerics"].get("wind_dt_s"))
     content = {
         "speed_mps": _positive(wind.get("speed_mps"), "wind.speed_mps"),
-        "turbulence_model": _required(wind.get("turbulence_model"), "wind.turbulence_model"),
-        "turbulence_class": _required(wind.get("turbulence_class"), "wind.turbulence_class"),
+        "spectral_model": _required(wind.get("spectral_model"), "wind.spectral_model"),
+        "iec_wind_type": _required(wind.get("iec_wind_type"), "wind.iec_wind_type"),
+        "iec_turbulence_class": _required(wind.get("iec_turbulence_class"), "wind.iec_turbulence_class"),
         "seed": _required(wind.get("seed"), "wind.seed (actual TurbSim RandSeed1)"),
         "dt_s": _positive(dt, "wind dt"), "generation_duration_s": duration,
         "usable_duration_s": wind.get("usable_duration_s", "ALL"),
