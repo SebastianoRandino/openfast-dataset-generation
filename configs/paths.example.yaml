@@ -1,6 +1,7 @@
 # Copy this file to configs/paths.yaml and edit for your machine. It is ignored by Git.
 executables:
   turbsim: /path/to/openfast/build/modules/turbsim/turbsim
+  openfast: /path/to/openfast/build/glue-codes/openfast/openfast
 templates:
   turbsim:
     legacy-iea15mw-turbsim-v2: /path/to/validated/TurbSim.inp

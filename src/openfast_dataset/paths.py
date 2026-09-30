@@ -16,6 +16,7 @@ class MachinePaths:
     turbsim_templates: dict[str, Path]
     openfast_templates: dict[str, Path] = field(default_factory=dict)
     output_root: Path = Path("outputs")
+    openfast_executable: Path | None = None
 
 
 def _file(value: Any, description: str, *, executable: bool = False) -> Path:
@@ -48,6 +49,7 @@ def load_machine_paths(config_path: str | Path = "configs/paths.yaml") -> Machin
     executables = raw.get("executables", {})
     templates = raw.get("templates", {})
     turbsim_value = executables.get("turbsim") if isinstance(executables, dict) else None
+    openfast_value = executables.get("openfast") if isinstance(executables, dict) else None
     turbsim_value = turbsim_value or raw.get("turbsim_executable")
     template_values = templates.get("turbsim", {}) if isinstance(templates, dict) else {}
     openfast_values = templates.get("openfast", {}) if isinstance(templates, dict) else {}
@@ -65,6 +67,7 @@ def load_machine_paths(config_path: str | Path = "configs/paths.yaml") -> Machin
         turbsim_templates=resolved,
         openfast_templates={str(template_id): _directory(path, f"OpenFAST template '{template_id}'") for template_id, path in openfast_values.items()},
         output_root=Path(output or raw.get("output_directory", "outputs")).expanduser(),
+        openfast_executable=_file(openfast_value, "OpenFAST executable", executable=True),
     )
 
 
@@ -84,3 +87,9 @@ def resolve_openfast_template(template_id: str, paths: MachinePaths) -> Path:
         return paths.openfast_templates[template_id]
     except KeyError:
         raise ValidationError(f"unknown OpenFAST template ID: {template_id}") from None
+
+
+def resolve_openfast_executable(paths: MachinePaths) -> Path:
+    if paths.openfast_executable is None:
+        raise ValidationError("OpenFAST executable is not configured")
+    return _file(paths.openfast_executable, "OpenFAST executable", executable=True)

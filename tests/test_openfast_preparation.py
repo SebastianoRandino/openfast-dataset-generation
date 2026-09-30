@@ -12,7 +12,7 @@ from openfast_dataset.wind.models import WindRealization
 def _template(root: Path) -> Path:
     (root / "main").mkdir(parents=True)
     (root / "common").mkdir()
-    (root / "main" / "model.fst").write_text('10 TMax - time\n0.01 DT - dt\n0.1 DT_Out - output\n"../common/Inflow.dat" InflowFile - file\n"SeaState.dat" SeaStFile - sea\n"ServoDyn.dat" ServoFile - servo\n', encoding="utf-8")
+    (root / "main" / "model.fst").write_text('10 TMax - time\n0.01 DT - dt\n0.1 DT_Out - output\n2 OutFileFmt - binary\n"../common/Inflow.dat" InflowFile - file\n"SeaState.dat" SeaStFile - sea\n"ServoDyn.dat" ServoFile - servo\n', encoding="utf-8")
     (root / "main" / "SeaState.dat").write_text('2 WaveMod\n1 WaveHs\n8 WaveTp\nDEFAULT WavePkShp\n0 WaveDir\n1 WaveSeed(1)\nRANLUX WaveSeed(2)\n10 WaveTMax\n0.25 WaveDT\n', encoding="utf-8")
     (root / "common" / "Inflow.dat").write_text('1 WindType - type\n8 HWindSpeed - steady\n"old.bts" FileName_BTS - bts\n', encoding="utf-8")
     (root / "main" / "ServoDyn.dat").write_bytes(b"DLL_DT preserved exactly\n")
@@ -42,7 +42,7 @@ def test_resolution_and_turbulent_preparation_is_deterministic(tmp_path: Path) -
     assert not prepared.reused and prepared.fst_path.read_text().splitlines()[:3] == ["120.0   TMax   - time", "0.025   DT   - dt", "0.1   DT_Out   - output"]
     inflow = prepared.workspace / "common/Inflow.dat"
     assert '3   WindType' in inflow.read_text() and '"Wind/wind.bts"   FileName_BTS' in inflow.read_text()
-    link = prepared.workspace / "Wind/wind.bts"
+    link = prepared.workspace / "common/Wind/wind.bts"
     assert link.is_symlink() and link.resolve() == bts.resolve()
     assert prepare_openfast_case(_case(), paths, realization).reused
     assert (template / "common/Inflow.dat").read_text().startswith("1 WindType")

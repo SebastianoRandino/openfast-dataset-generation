@@ -204,7 +204,8 @@ def prepare_openfast_case(case: ResolvedCase, paths: MachinePaths, realization: 
             patch_openfast_field(inflow, field, value); patched.append({"file": inflow.relative_to(workspace.resolve()).as_posix(), "field": field})
     else:
         assert wind_source is not None
-        local_bts = workspace / "Wind" / "wind.bts"
+        # InflowWind resolves FileName_BTS relative to its own input file.
+        local_bts = inflow.parent / "Wind" / "wind.bts"
         _link_wind(wind_source, local_bts)
         for field, value in (("WindType", 3), ("FileName_BTS", "Wind/wind.bts")):
             patch_openfast_field(inflow, field, value); patched.append({"file": inflow.relative_to(workspace.resolve()).as_posix(), "field": field})
