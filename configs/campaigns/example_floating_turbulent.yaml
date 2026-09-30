@@ -28,7 +28,8 @@ waves:
   significant_height_m: 2.0
   peak_period_s: 8.0
   spectrum: JONSWAP
-  seed: -12345
+  direction_deg: 0.0
+  seed_index: 1 # illustrative deterministic seed policy, not an environmental default
 controller:
   kind: rosco
   template: ROSCO.yaml

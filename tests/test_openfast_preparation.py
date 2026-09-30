@@ -12,7 +12,8 @@ from openfast_dataset.wind.models import WindRealization
 def _template(root: Path) -> Path:
     (root / "main").mkdir(parents=True)
     (root / "common").mkdir()
-    (root / "main" / "model.fst").write_text('10 TMax - time\n0.01 DT - dt\n0.1 DT_Out - output\n"../common/Inflow.dat" InflowFile - file\n', encoding="utf-8")
+    (root / "main" / "model.fst").write_text('10 TMax - time\n0.01 DT - dt\n0.1 DT_Out - output\n"../common/Inflow.dat" InflowFile - file\n"SeaState.dat" SeaStFile - sea\n', encoding="utf-8")
+    (root / "main" / "SeaState.dat").write_text('2 WaveMod\n1 WaveHs\n8 WaveTp\nDEFAULT WavePkShp\n0 WaveDir\n1 WaveSeed(1)\nRANLUX WaveSeed(2)\n10 WaveTMax\n0.25 WaveDT\n', encoding="utf-8")
     (root / "common" / "Inflow.dat").write_text('1 WindType - type\n8 HWindSpeed - steady\n"old.bts" FileName_BTS - bts\n', encoding="utf-8")
     return root
 
@@ -68,6 +69,19 @@ def test_missing_bts_and_unresolved_dependencies_are_explicit(tmp_path: Path) ->
     with pytest.raises(ValidationError, match="BTS"):
         prepare_openfast_case(_case(), paths, realization)
     bts = paths.output_root / "wind" / realization.wind_id / "wind.bts"; bts.parent.mkdir(parents=True); bts.write_bytes(b"BTS")
-    case = _case(); case.scientific["waves"] = {"kind": "irregular"}; case.scientific["controller"] = {"kind": "rosco", "omega_pc": 0.1}
+    case = _case(); case.scientific["waves"] = {"kind": "irregular", "significant_height_m": 2, "peak_period_s": 8, "spectrum": "JONSWAP", "seed": 1}; case.scientific["controller"] = {"kind": "rosco", "omega_pc": 0.1}
     payload = json.loads(prepare_openfast_case(case, paths, realization).metadata_path.read_text())
-    assert set(payload["unresolved"]) == {"waves", "controller"}
+    assert set(payload["unresolved"]) == {"controller"}
+
+
+def test_seastate_regular_and_irregular_mapping(tmp_path: Path) -> None:
+    template = _template(tmp_path / "template"); paths = _paths(template, tmp_path / "outputs")
+    regular = _case(kind="steady"); regular.scientific["waves"] = {"kind": "regular", "wave_height_m": 3, "period_s": 9, "direction_deg": 15}
+    prepared = prepare_openfast_case(regular, paths)
+    text = (prepared.workspace / "main/SeaState.dat").read_text()
+    assert "1   WaveMod" in text and "3   WaveHs" in text and "9   WaveTp" in text and "15   WaveDir" in text
+    irregular = _case(kind="steady", case_id="case_00002"); irregular.scientific["waves"] = {"kind": "irregular", "significant_height_m": 4, "peak_period_s": 10, "spectrum": "JONSWAP", "direction_deg": -10, "seed": -4}
+    prepared = prepare_openfast_case(irregular, paths)
+    text = (prepared.workspace / "main/SeaState.dat").read_text()
+    assert "2   WaveMod" in text and "-4   WaveSeed(1)" in text and "RANLUX   WaveSeed(2)" in text
+    assert json.loads(prepared.metadata_path.read_text())["wave_realization_id"].startswith("wave_")

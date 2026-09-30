@@ -77,7 +77,7 @@ def test_structured_path_typo_is_rejected() -> None:
 
 def test_regular_and_irregular_wave_validation() -> None:
     Waves(kind="regular", wave_height_m=2.0, period_s=8.0).validate()
-    Waves(kind="irregular", significant_height_m=2.0, peak_period_s=8.0, spectrum="JONSWAP").validate()
+    Waves(kind="irregular", significant_height_m=2.0, peak_period_s=8.0, spectrum="JONSWAP", seed=1).validate()
     with pytest.raises(ValidationError, match="wave_height_m"):
         Waves(kind="regular", significant_height_m=2.0, peak_period_s=8.0).validate()
     with pytest.raises(ValidationError, match="spectrum"):

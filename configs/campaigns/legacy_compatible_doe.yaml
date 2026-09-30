@@ -25,7 +25,7 @@ wind:
   template_id: legacy-iea15mw-turbsim-v2
   grid: {num_y: 11, num_z: 11, width_m: 300.0, height_m: 300.0}
   turbsim: {overrides: {RandSeed2: RanLux}}
-waves: {kind: irregular, significant_height_m: 1.18, peak_period_s: 8.31, spectrum: JONSWAP, seed: -499998999}
+waves: {kind: irregular, significant_height_m: 1.18, peak_period_s: 8.31, spectrum: JONSWAP, direction_deg: 0.0, seed: -499998999}
 controller: {kind: rosco, template: ROSCO.yaml, omega_pc: 0.20, zeta_pc: 0.8}
 actuation: {enabled: false}
 splits: {train: {}, validation: {}, test: {}}

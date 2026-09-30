@@ -120,6 +120,9 @@ class Waves:
     spectrum: str | None = None
     direction_deg: float | None = None
     seed: int | None = None
+    seed_index: int | None = None
+    seed_2: int | str | None = None
+    peak_shape: float | str | None = "DEFAULT"
     external_reference: str | None = None
     parameters: dict[str, Any] = field(default_factory=dict)
 
@@ -129,11 +132,23 @@ class Waves:
         if self.kind == "regular":
             _positive("waves.wave_height_m", self.wave_height_m)
             _positive("waves.period_s", self.period_s)
+            if self.significant_height_m is not None or self.peak_period_s is not None:
+                raise ValidationError("regular waves must not define significant_height_m or peak_period_s")
         if self.kind == "irregular":
             _positive("waves.significant_height_m", self.significant_height_m)
             _positive("waves.peak_period_s", self.peak_period_s)
         if self.kind == "irregular" and not self.spectrum:
             raise ValidationError("irregular waves require waves.spectrum")
+        if self.kind == "irregular" and self.wave_height_m is not None:
+            raise ValidationError("irregular waves must not define wave_height_m")
+        if self.kind == "irregular" and self.seed is None and self.seed_index is None:
+            raise ValidationError("irregular waves require waves.seed or waves.seed_index")
+        if self.seed_index is not None and (not isinstance(self.seed_index, int) or self.seed_index < 0):
+            raise ValidationError("waves.seed_index must be a non-negative integer")
+        if self.kind == "none" and any(value is not None for value in (self.wave_height_m, self.period_s, self.significant_height_m, self.peak_period_s)):
+            raise ValidationError("waves.kind none must not define wave heights or periods")
+        if self.direction_deg is not None and not -180 <= self.direction_deg <= 180:
+            raise ValidationError("waves.direction_deg must be between -180 and 180 degrees")
         if self.kind == "external" and not self.external_reference:
             raise ValidationError("external waves require waves.external_reference")
 
