@@ -197,6 +197,8 @@ class CampaignSpecification:
     waves: Waves
     controller: Controller
     actuation: Actuation
+    openfast_template_id: str | None = None
+    openfast_primary_fst: str | None = None
     modules: dict[str, bool] = field(default_factory=dict)
     overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
     sweeps: list[dict[str, Any]] = field(default_factory=list)
@@ -218,7 +220,7 @@ class CampaignSpecification:
 
     def base_scientific(self) -> dict[str, Any]:
         return {
-            "model": self.model, "turbine": self.turbine, "platform": asdict(self.platform),
+            "model": self.model, "model_configuration": {"openfast_template_id": self.openfast_template_id, "openfast_primary_fst": self.openfast_primary_fst}, "turbine": self.turbine, "platform": asdict(self.platform),
             "numerics": asdict(self.numerics), "wind": asdict(self.wind), "waves": asdict(self.waves),
             "controller": asdict(self.controller), "actuation": asdict(self.actuation),
             "modules": self.modules, "overrides": self.overrides,

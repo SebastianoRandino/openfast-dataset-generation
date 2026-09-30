@@ -1,5 +1,7 @@
 # Portable metadata only.  The complete validated template stays on disk.
 identifier: iea15mw-volturnus
+openfast_template_id: iea15mw-volturnus-openfast-v1
+openfast_primary_fst: IEA-15-240-RWT-UMaineSemi/IEA-15-240-RWT-UMaineSemi.fst
 turbine:
   name: IEA-15-240-RWT
   template_identifier: IEA-15-240-RWT-UMaineSemi

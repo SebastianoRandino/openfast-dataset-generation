@@ -4,5 +4,7 @@ executables:
 templates:
   turbsim:
     legacy-iea15mw-turbsim-v2: /path/to/validated/TurbSim.inp
+  openfast:
+    iea15mw-volturnus-openfast-v1: /path/to/IEA-15MW-VolturnUS
 outputs:
   root: ./outputs
