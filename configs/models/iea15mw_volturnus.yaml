@@ -1,0 +1,11 @@
+# Portable metadata only.  The complete validated template stays on disk.
+identifier: iea15mw-volturnus
+turbine:
+  name: IEA-15-240-RWT
+  template_identifier: IEA-15-240-RWT-UMaineSemi
+  template_revision: null
+  template_checksum: null
+platform:
+  kind: floating
+  hydrodynamics_template: SeaState.dat
+  mooring_template: MoorDyn.dat

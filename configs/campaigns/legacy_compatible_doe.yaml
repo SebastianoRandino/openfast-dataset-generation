@@ -1,0 +1,54 @@
+# Regression/reference profile for DatasetIdentification/scripts/
+# generate_doe_dataset_splits_compatible.py.  It is not a scientific default.
+# Group ordering is deterministic.  Its rows intentionally retain every legacy
+# environment/controller/seed value, while exact legacy case-number interleaving
+# remains a documented migration gap.
+name: legacy-compatible-doe-reference
+model: ../models/iea15mw_volturnus.yaml
+numerics:
+  integration_dt_s: 0.025
+  duration_s: 1000.0
+  controller_dt_s: 0.10
+  output_dt_s: 0.10
+  wind_dt_s: 0.10
+wind: {kind: turbulent, speed_mps: 6.0, turbulence_model: NTM, turbulence_class: B, seed_index: 1}
+waves: {kind: irregular, significant_height_m: 1.18, peak_period_s: 8.31, spectrum: JONSWAP, seed: -499998999}
+controller: {kind: rosco, template: ROSCO.yaml, omega_pc: 0.20, zeta_pc: 0.8}
+actuation: {enabled: false}
+splits: {train: {}, validation: {}, test: {}}
+# Anchors keep the regression data readable.  Each 20-entry paired sweep is the
+# legacy wind/controller ordering: 6/8 below rated, then three controllers per U.
+legacy_winds: &winds [6, 8, 10, 10, 10, 12, 12, 12, 14, 14, 14, 16, 16, 16, 18, 18, 18, 22, 22, 22]
+legacy_controllers: &controller_ids [baseline_below, baseline_below, soft, baseline, aggressive, soft, baseline, aggressive, soft, baseline, aggressive, soft, baseline, aggressive, soft, baseline, aggressive, soft, baseline, aggressive]
+legacy_omega: &omega [0.20, 0.20, 0.05, 0.10, 0.15, 0.05, 0.10, 0.15, 0.05, 0.10, 0.15, 0.05, 0.10, 0.15, 0.05, 0.10, 0.15, 0.05, 0.10, 0.15]
+normal_hs: &normal_hs [1.18, 1.32, 1.54, 1.54, 1.54, 1.84, 1.84, 1.84, 2.19, 2.19, 2.19, 2.60, 2.60, 2.60, 3.06, 3.06, 3.06, 4.03, 4.03, 4.03]
+normal_tp: &normal_tp [8.31, 8.01, 7.65, 7.65, 7.65, 7.44, 7.44, 7.44, 7.46, 7.46, 7.46, 7.64, 7.64, 7.64, 8.05, 8.05, 8.05, 8.99, 8.99, 8.99]
+severe_hs: &severe_hs [8.00, 8.00, 8.10, 8.10, 8.10, 8.50, 8.50, 8.50, 8.50, 8.50, 8.50, 9.80, 9.80, 9.80, 9.80, 9.80, 9.80, 9.80, 9.80, 9.80]
+severe_tp: &severe_tp [12.70, 12.70, 12.80, 12.80, 12.80, 13.10, 13.10, 13.10, 13.10, 13.10, 13.10, 14.10, 14.10, 14.10, 14.10, 14.10, 14.10, 14.10, 14.10, 14.10]
+train_seeds: &train_seeds [1, 2, 3]
+train_seeds_actual: &train_seeds_actual [100001, 100002, 100003]
+train_wave_seed_indices: &train_wave_seed_indices [1001, 1002, 1003]
+train_wave_seeds: &train_wave_seeds [-499998999, -499998998, -499998997]
+validation_seeds: &validation_seeds [4]
+validation_seeds_actual: &validation_seeds_actual [100004]
+validation_wave_seed_indices: &validation_wave_seed_indices [1004]
+validation_wave_seeds: &validation_wave_seeds [-499998996]
+test_seeds: &test_seeds [5]
+test_seeds_actual: &test_seeds_actual [100005]
+test_wave_seed_indices: &test_wave_seed_indices [1005]
+test_wave_seeds: &test_wave_seeds [-499998995]
+case_groups:
+  - &dlc11_train {split: train, fixed: {wind.turbulence_model: NTM, wind.overrides.dlc: DLC11}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *normal_hs, waves.peak_period_s: *normal_tp}}, {mode: paired, dimensions: {wind.seed_index: *train_seeds, wind.seed: *train_seeds_actual, waves.parameters.seed_index: *train_wave_seed_indices, waves.seed: *train_wave_seeds}}]}
+  - {<<: *dlc11_train, fixed: {wind.turbulence_model: 1ETM, wind.overrides.dlc: DLC13}}
+  - {<<: *dlc11_train, fixed: {wind.turbulence_model: NTM, wind.overrides.dlc: DLC16}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *severe_hs, waves.peak_period_s: *severe_tp}}, {mode: paired, dimensions: {wind.seed_index: *train_seeds, wind.seed: *train_seeds_actual, waves.parameters.seed_index: *train_wave_seed_indices, waves.seed: *train_wave_seeds}}]}
+  - &dlc11_validation {split: validation, fixed: {wind.turbulence_model: NTM, wind.overrides.dlc: DLC11}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *normal_hs, waves.peak_period_s: *normal_tp}}, {mode: paired, dimensions: {wind.seed_index: *validation_seeds, wind.seed: *validation_seeds_actual, waves.parameters.seed_index: *validation_wave_seed_indices, waves.seed: *validation_wave_seeds}}]}
+  - {<<: *dlc11_validation, fixed: {wind.turbulence_model: 1ETM, wind.overrides.dlc: DLC13}}
+  - {<<: *dlc11_validation, fixed: {wind.turbulence_model: NTM, wind.overrides.dlc: DLC16}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *severe_hs, waves.peak_period_s: *severe_tp}}, {mode: paired, dimensions: {wind.seed_index: *validation_seeds, wind.seed: *validation_seeds_actual, waves.parameters.seed_index: *validation_wave_seed_indices, waves.seed: *validation_wave_seeds}}]}
+  - &dlc11_test {split: test, fixed: {wind.turbulence_model: NTM, wind.overrides.dlc: DLC11}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *normal_hs, waves.peak_period_s: *normal_tp}}, {mode: paired, dimensions: {wind.seed_index: *test_seeds, wind.seed: *test_seeds_actual, waves.parameters.seed_index: *test_wave_seed_indices, waves.seed: *test_wave_seeds}}]}
+  - {<<: *dlc11_test, fixed: {wind.turbulence_model: 1ETM, wind.overrides.dlc: DLC13}}
+  - {<<: *dlc11_test, fixed: {wind.turbulence_model: NTM, wind.overrides.dlc: DLC16}, sweeps: [{mode: paired, dimensions: {wind.speed_mps: *winds, controller.overrides.controller_id: *controller_ids, controller.omega_pc: *omega, waves.significant_height_m: *severe_hs, waves.peak_period_s: *severe_tp}}, {mode: paired, dimensions: {wind.seed_index: *test_seeds, wind.seed: *test_seeds_actual, waves.parameters.seed_index: *test_wave_seed_indices, waves.seed: *test_wave_seeds}}]}
+provenance:
+  reference_legacy_script: generate_doe_dataset_splits_compatible.py
+  openfast_version: null
+  turbsim_version: null
+  rosco_version: null

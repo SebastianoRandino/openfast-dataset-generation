@@ -1,5 +1,12 @@
 # OpenFAST Dataset Generation
 
+Portable configuration and deterministic campaign resolution for future OpenFAST
+dataset generation.  This repository currently does **not** execute OpenFAST,
+TurbSim, HydroDyn, or ROSCO.
+
+See [the configuration guide](docs/configuration.md).  Machine-specific paths stay
+in ignored `configs/paths.yaml`; scientific campaigns live in `configs/campaigns/`.
+
 Reproducible workflow for generating OpenFAST simulation datasets for wind-turbine system identification.
 
 ## Scope
