@@ -1,0 +1,14 @@
+# Explicit opt-in smoke case, not a validated production campaign or new DoE.
+name: integration-v5-short
+model: ../models/iea15mw_volturnus_v5.0.0.yaml
+numerics:
+  integration_dt_s: 0.025
+  output_dt_s: 0.1
+  duration_s: 5.0
+wind:
+  kind: steady
+  speed_mps: 12.0
+waves:
+  kind: none
+controller:
+  kind: template

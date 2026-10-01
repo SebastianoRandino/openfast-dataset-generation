@@ -9,6 +9,9 @@ deliberate `overrides` entries using module-aware code.
 and output paths.  `configs/models/` and `configs/campaigns/` are portable and
 version controlled.  A campaign points at a model metadata file using `model:`.
 
+OpenFAST template and executable versions are selected explicitly; see
+[versioned templates and provenance](openfast_versions.md).
+
 `numerics` names independent clocks: `integration_dt_s`, `output_dt_s`,
 `actuator_dt_s`, `wind_dt_s`, `wave_dt_s`, duration, and optional discard time.
 They are intentionally not aliases. Controller timing is deliberately absent: it

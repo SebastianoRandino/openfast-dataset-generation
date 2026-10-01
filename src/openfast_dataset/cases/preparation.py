@@ -3,17 +3,19 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
-from openfast_dataset.campaign.models import ResolvedCase, ValidationError
+from openfast_dataset.campaign.models import (
+    ResolvedCase,
+    ValidationError,
+    required_openfast_version,
+)
 from openfast_dataset.campaign.provenance import scientific_hash
 from openfast_dataset.paths import MachinePaths, resolve_openfast_template
-from openfast_dataset.wind.models import WindRealization
 from openfast_dataset.waves.models import WaveRealization
+from openfast_dataset.wind.models import WindRealization
 
 
 class OpenFASTPreparationError(RuntimeError):
@@ -168,9 +170,18 @@ def prepare_openfast_case(case: ResolvedCase, paths: MachinePaths, realization: 
         raise ValidationError("model configuration is missing openfast_template_id")
     template = resolve_openfast_template(template_id, paths)
     source_fst, relative_fst = _primary_fst(case, template)
+    version = required_openfast_version(configuration)
+    if version in {"4.1.1", "5.0.0"}:
+        has_v5_coupling = any(len(parts := line.split()) >= 2 and parts[1] == "ModCoupling"
+                              for line in source_fst.read_text().splitlines())
+        if has_v5_coupling != (version == "5.0.0"):
+            raise ValidationError(f"OpenFAST template format does not match required version {version}")
     root = Path(output_root) if output_root is not None else paths.output_root
     workspace = root / "cases" / case.case_id
     template_checksum = _tree_checksum(template)
+    frozen_checksum = case.scientific.get("turbine", {}).get("template_checksum")
+    if frozen_checksum and frozen_checksum != template_checksum:
+        raise ValidationError("frozen OpenFAST template checksum does not match")
     wind_source, wind_id = _wind_source(case, realization, root)
     if wind_source is not None and (not wind_source.is_file() or wind_source.stat().st_size == 0):
         raise ValidationError(f"required BTS file does not exist or is empty: {wind_source}")

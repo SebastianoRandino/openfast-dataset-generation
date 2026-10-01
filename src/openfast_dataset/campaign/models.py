@@ -2,12 +2,25 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
 
 class ValidationError(ValueError):
     """Raised when a campaign is scientifically incomplete or inconsistent."""
+
+
+def required_openfast_version(configuration: dict[str, Any]) -> str | None:
+    version = configuration.get("openfast_version")
+    known = {"iea15mw-volturnus-openfast-v1": "4.1.1",
+             "IEA15MW_VolturnUS_v4.1.1": "4.1.1", "IEA15MW_VolturnUS_v5.0.0": "5.0.0"}
+    inferred = known.get(configuration.get("openfast_template_id"))
+    if version is not None and (not isinstance(version, str) or not re.fullmatch(r"\d+\.\d+\.\d+", version)):
+        raise ValidationError("openfast_version must be a version string such as 5.0.0")
+    if inferred and version is not None and inferred != version:
+        raise ValidationError("OpenFAST template ID conflicts with openfast_version")
+    return version or inferred
 
 
 def _positive(name: str, value: float | None) -> None:
@@ -205,6 +218,7 @@ class CampaignSpecification:
     actuation: Actuation
     openfast_template_id: str | None = None
     openfast_primary_fst: str | None = None
+    openfast_version: str | None = None
     modules: dict[str, bool] = field(default_factory=dict)
     overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
     sweeps: list[dict[str, Any]] = field(default_factory=list)
@@ -218,6 +232,7 @@ class CampaignSpecification:
             raise ValidationError("campaign.name is required")
         if not self.model:
             raise ValidationError("campaign.model is required")
+        required_openfast_version({"openfast_template_id": self.openfast_template_id, "openfast_version": self.openfast_version})
         self.platform.validate(); self.numerics.validate(); self.wind.validate(); self.waves.validate()
         self.controller.validate(); self.actuation.validate()
         unknown = set(self.splits) - {"train", "validation", "test"}
@@ -225,8 +240,11 @@ class CampaignSpecification:
             raise ValidationError(f"unsupported split names: {sorted(unknown)}")
 
     def base_scientific(self) -> dict[str, Any]:
+        configuration = {"openfast_template_id": self.openfast_template_id, "openfast_primary_fst": self.openfast_primary_fst}
+        if self.openfast_version is not None:
+            configuration["openfast_version"] = self.openfast_version
         return {
-            "model": self.model, "model_configuration": {"openfast_template_id": self.openfast_template_id, "openfast_primary_fst": self.openfast_primary_fst}, "turbine": self.turbine, "platform": asdict(self.platform),
+            "model": self.model, "model_configuration": configuration, "turbine": self.turbine, "platform": asdict(self.platform),
             "numerics": asdict(self.numerics), "wind": asdict(self.wind), "waves": asdict(self.waves),
             "controller": asdict(self.controller), "actuation": asdict(self.actuation),
             "modules": self.modules, "overrides": self.overrides,
@@ -236,6 +254,7 @@ class CampaignSpecification:
 def validate_resolved_scientific(scientific: dict[str, Any]) -> None:
     """Validate one fully-expanded case using the same typed domain model."""
     try:
+        required_openfast_version(scientific.get("model_configuration", {}))
         Platform(**scientific["platform"]).validate()
         TimeScales(**scientific["numerics"]).validate()
         Wind(**scientific["wind"]).validate()

@@ -34,6 +34,7 @@ def load_campaign(path: str | Path) -> CampaignSpecification:
     return CampaignSpecification(
         name=data.get("name", ""), model=model_data.get("identifier", ""),
         openfast_template_id=model_data.get("openfast_template_id"), openfast_primary_fst=model_data.get("openfast_primary_fst"),
+        openfast_version=model_data.get("openfast_version"),
         turbine=model_data.get("turbine", {}), platform=Platform(**platform_data),
         numerics=TimeScales(**data.get("numerics", {})), wind=Wind(**data.get("wind", {})),
         waves=Waves(**data.get("waves", {})), controller=Controller(**data.get("controller", {})),

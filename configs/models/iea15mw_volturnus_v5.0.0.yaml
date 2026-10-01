@@ -1,0 +1,13 @@
+# Separate pinned official-source deck; see docs/openfast_versions.md.
+identifier: IEA15MW_VolturnUS_v5.0.0
+openfast_template_id: IEA15MW_VolturnUS_v5.0.0
+openfast_version: 5.0.0
+openfast_primary_fst: OpenFAST/IEA-15-240-RWT-UMaineSemi/IEA-15-240-RWT-UMaineSemi.fst
+turbine:
+  name: IEA-15-240-RWT
+  template_identifier: IEA15MW_VolturnUS_v5.0.0
+  template_revision: 86d51c8a1ee65be4f3686087a5c443c0b57e5cfb
+platform:
+  kind: floating
+  hydrodynamics_template: IEA-15-240-RWT-UMaineSemi_SeaState.dat
+  mooring_template: IEA-15-240-RWT-UMaineSemi_MoorDyn.dat

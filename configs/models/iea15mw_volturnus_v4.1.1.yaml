@@ -1,6 +1,6 @@
-# Portable metadata only.  The complete validated template stays on disk.
-identifier: iea15mw-volturnus
-openfast_template_id: iea15mw-volturnus-openfast-v1
+# Explicit name for the frozen validated v4 template. Legacy metadata remains supported.
+identifier: IEA15MW_VolturnUS_v4.1.1
+openfast_template_id: IEA15MW_VolturnUS_v4.1.1
 openfast_version: 4.1.1
 openfast_primary_fst: IEA-15-240-RWT-UMaineSemi/IEA-15-240-RWT-UMaineSemi.fst
 turbine:

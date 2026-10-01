@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from openfast_dataset.campaign.models import required_openfast_version
 from openfast_dataset.paths import MachinePaths, resolve_openfast_executable
+
 from .preparation import OpenFASTPreparationError, PreparedOpenFASTCase
 
 
@@ -53,14 +56,32 @@ def _write_runtime(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def probe_openfast_version(executable: Path) -> str | None:
+    """Read the official -v banner without launching a simulation."""
+    try:
+        result = subprocess.run([str(executable), "-v"], text=True, capture_output=True,
+                                check=False, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    match = re.search(r"\bOpenFAST[- ]v?(\d+\.\d+\.\d+)\b", result.stdout + result.stderr)
+    return match.group(1) if match else None
+
+
 def run_openfast(prepared: PreparedOpenFASTCase, paths: MachinePaths, *, force: bool = False) -> OpenFASTRunResult:
     """Run one prepared case in the primary FST directory and validate its .outb."""
-    executable = resolve_openfast_executable(paths)
+    metadata = json.loads(prepared.metadata_path.read_text(encoding="utf-8"))
+    configuration = metadata["resolved_scientific_case"]["scientific"].get("model_configuration", {})
+    expected = required_openfast_version(configuration)
+    executable = resolve_openfast_executable(paths, expected)
+    detected = probe_openfast_version(executable) if expected else None
+    if detected is not None and detected != expected:
+        raise OpenFASTPreparationError(f"OpenFAST version mismatch: template requires {expected}, executable reports {detected}")
+    executable_checksum = _checksum(executable)
     output, log, runtime = _output_path(prepared), prepared.workspace / "openfast.log", _runtime_path(prepared)
     identity = _preparation_identity(prepared)
     if runtime.is_file() and output.is_file() and output.stat().st_size > 0 and not force:
         prior = json.loads(runtime.read_text(encoding="utf-8"))
-        if prior.get("status") == "success" and prior.get("preparation_identity") == identity and prior.get("output_checksum_sha256") == _checksum(output):
+        if prior.get("status") == "success" and prior.get("preparation_identity") == identity and prior.get("output_checksum_sha256") == _checksum(output) and prior.get("openfast_executable_checksum_sha256") == executable_checksum:
             return OpenFASTRunResult(prepared, "reused", prior.get("return_code", 0), output, log, True)
         raise OpenFASTPreparationError("existing OpenFAST output provenance is inconsistent; use force=True")
     if output.exists() and not force:
@@ -68,10 +89,11 @@ def run_openfast(prepared: PreparedOpenFASTCase, paths: MachinePaths, *, force: 
     if force:
         for path in (output, log):
             if path.exists() or path.is_symlink(): path.unlink()
-    _write_runtime(runtime, {"status": "running", "preparation_identity": identity, "openfast_executable": str(executable), "openfast_executable_checksum_sha256": _checksum(executable), "primary_output_filename": output.name, "log_filename": log.name})
+    version_info = {"openfast_required_version": expected, "openfast_detected_version": detected, "version_check": "matched" if detected else "unavailable"}
+    _write_runtime(runtime, {**version_info, "status": "running", "preparation_identity": identity, "openfast_executable": str(executable), "openfast_executable_checksum_sha256": executable_checksum, "primary_output_filename": output.name, "log_filename": log.name})
     completed = subprocess.run([str(executable), prepared.fst_path.name], cwd=prepared.fst_path.parent, text=True, capture_output=True, check=False)
     log.write_text(f"# command: {executable} {prepared.fst_path.name}\n# return_code: {completed.returncode}\n\n--- stdout ---\n{completed.stdout}\n--- stderr ---\n{completed.stderr}", encoding="utf-8")
-    base = {"preparation_identity": identity, "openfast_executable": str(executable), "openfast_executable_checksum_sha256": _checksum(executable), "primary_output_filename": output.name, "log_filename": log.name, "return_code": completed.returncode}
+    base = {**version_info, "preparation_identity": identity, "openfast_executable": str(executable), "openfast_executable_checksum_sha256": executable_checksum, "primary_output_filename": output.name, "log_filename": log.name, "return_code": completed.returncode}
     if completed.returncode != 0:
         _write_runtime(runtime, {**base, "status": "failed"})
         raise OpenFASTPreparationError(f"OpenFAST failed with return code {completed.returncode}; see {log}")
