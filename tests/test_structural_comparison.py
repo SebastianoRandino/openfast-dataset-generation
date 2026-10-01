@@ -54,6 +54,10 @@ def test_matrix_dependency_identity_and_pairwise_science():
     winds, waves = plan_winds(cases), plan_waves(cases)
     assert len(cases) == 6
     assert len(winds.realizations) == len(waves.realizations) == 3
+    # Existing full-duration BTS dependencies must survive the global-clock change.
+    assert {wind.wind_id for wind in winds.realizations} == {
+        "wind_8029c703c7171299", "wind_74fb16429b75d05e", "wind_b5a3cb79b3fb0007"
+    }
     assert sorted(Counter(winds.case_to_wind.values()).values()) == [2, 2, 2]
     for index, (u, hs, tp) in enumerate(((5, 1, 6), (10, 2, 8), (14, 3, 10))):
         ed, bd = cases[2 * index : 2 * index + 2]
@@ -67,6 +71,17 @@ def test_matrix_dependency_identity_and_pairwise_science():
         assert left["wind"]["speed_mps"] == u
         assert left["waves"]["significant_height_m"] == hs
         assert left["waves"]["peak_period_s"] == tp
+        assert left["wind"]["seed"] == 510001 + index
+        assert left["waves"]["seed"] == 610001 + index
+        assert left["waves"]["seed_2"] == "RANLUX"
+        assert left["numerics"]["integration_dt_s"] == 0.01
+        assert left["numerics"]["output_dt_s"] == 0.01
+        assert left["numerics"]["beamdyn_dt_s"] == 0.01
+        assert left["numerics"]["duration_s"] == 400.0
+        assert left["numerics"]["wind_dt_s"] == 0.05
+        assert left["numerics"]["wave_dt_s"] == 0.25
+        assert left["controller"]["kind"] == "template"
+        assert left["overrides"]["openfast"] == {"fst": {"ModCoupling": 3}}
         assert ed.split is bd.split is None
     for wind in winds.realizations:
         assert wind.content["generation_duration_s"] == 460
@@ -90,7 +105,7 @@ def test_matrix_dependency_identity_and_pairwise_science():
 def template(root):
     root.mkdir()
     (root / "model.fst").write_text(
-        '3 ModCoupling\n1 CompElast\n10 TMax\n.01 DT\n.1 DT_Out\n0 TStart\n2 OutFileFmt\n"ed.dat" EDFile\n"bd.dat" BDBldFile(1)\n"bd.dat" BDBldFile(2)\n"bd.dat" BDBldFile(3)\n"inflow.dat" InflowFile\n"sea.dat" SeaStFile\n"servo.dat" ServoFile\n"aero.dat" AeroFile\n'
+        '3 ModCoupling\n6 MaxConvIter\n1e-4 ConvTol\n1 CompElast\n10 TMax\n.01 DT\n.1 DT_Out\n0 TStart\n2 OutFileFmt\n"ed.dat" EDFile\n"bd.dat" BDBldFile(1)\n"bd.dat" BDBldFile(2)\n"bd.dat" BDBldFile(3)\n"inflow.dat" InflowFile\n"sea.dat" SeaStFile\n"servo.dat" ServoFile\n"aero.dat" AeroFile\n'
     )
     (root / "ed.dat").write_text(
         "True FlapDOF1\nTrue FlapDOF2\nTrue EdgeDOF\n"
@@ -106,8 +121,13 @@ def template(root):
     (root / "sea.dat").write_text(
         "0 WaveMod\n1 WaveHs\n6 WaveTp\nDEFAULT WavePkShp\n0 WaveDir\n1 WaveSeed(1)\nRANLUX WaveSeed(2)\n400 WaveTMax\n.25 WaveDT\n"
     )
-    (root / "servo.dat").write_bytes(b'baseline ROSCO\nOutList\n"GenPwr"\n"GenTq"\nEND\n')
+    (root / "servo.dat").write_bytes(
+        b'baseline ROSCO\n"DEFAULT" DT\n"DEFAULT" DLL_DT\nOutList\n"GenPwr"\n"GenTq"\nEND\n'
+    )
     (root / "DISCON.IN").write_bytes(b"unchanged controller tuning\n")
+    (root / "libdiscon.so").write_bytes(b"unchanged ROSCO library\n")
+    (root / "hydro.dat").write_bytes(b"unchanged hydrodynamics\n")
+    (root / "mooring.dat").write_bytes(b"unchanged moorings\n")
     (root / "aero.dat").write_text('OutList\n"RtAeroFxh"\nEND\n')
 
 
@@ -142,12 +162,17 @@ def test_prepared_six_cases_and_allowed_file_differences(tmp_path, monkeypatch, 
         for key, value in {
             "CompElast": 2 if beam else 1,
             "ModCoupling": 3,
-            "DT": 0.025,
-            "DT_Out": 0.025,
+            "DT": 0.01,
+            "DT_Out": 0.01,
+            "MaxConvIter": 6,
+            "ConvTol": 1e-4,
             "TMax": 400,
             "TStart": 0,
         }.items():
             assert float(_field_value(fst, key)) == value
+        assert int(float(_field_value(fst, "TMax")) / float(_field_value(fst, "DT_Out"))) + 1 == 40001
+        for key in ("DT", "DLL_DT"):
+            assert _field_value(result.workspace / "servo.dat", key) == "DEFAULT"
         for key in ("FlapDOF1", "FlapDOF2", "EdgeDOF"):
             assert _field_value(ed, key) == str(not beam)
         for key in ("PtfmSgDOF", "PtfmSwDOF", "PtfmHvDOF", "PtfmRDOF", "PtfmPDOF", "PtfmYDOF"):
@@ -160,13 +185,13 @@ def test_prepared_six_cases_and_allowed_file_differences(tmp_path, monkeypatch, 
             assert float(_field_value(bd, "DTBeam")) == 0.01
             for blade in range(1, 4):
                 assert _field_value(fst, f"BDBldFile({blade})") == "bd.dat"
-        for name in ("servo.dat", "DISCON.IN", "blade.dat"):
+        for name in ("servo.dat", "DISCON.IN", "libdiscon.so", "blade.dat", "hydro.dat", "mooring.dat"):
             assert (result.workspace / name).read_bytes() == (source / name).read_bytes()
     for ed, bd in zip(prepared[::2], prepared[1::2]):
         assert (ed.workspace / "Wind/wind.bts").resolve() == (
             bd.workspace / "Wind/wind.bts"
         ).resolve()
-        for name in ("sea.dat", "inflow.dat", "aero.dat", "servo.dat", "DISCON.IN", "blade.dat"):
+        for name in ("sea.dat", "inflow.dat", "aero.dat", "servo.dat", "DISCON.IN", "libdiscon.so", "blade.dat", "hydro.dat", "mooring.dat"):
             assert (ed.workspace / name).read_bytes() == (bd.workspace / name).read_bytes()
         differences = {
             name

@@ -3,8 +3,8 @@ model: ../models/iea15mw_volturnus_v5.0.0.yaml
 structural_model: elastodyn
 output_profile: structural-comparison-v5
 numerics:
-  integration_dt_s: 0.025
-  output_dt_s: 0.025
+  integration_dt_s: 0.01
+  output_dt_s: 0.01
   duration_s: 400.0
   wind_dt_s: 0.05
   wave_dt_s: 0.25

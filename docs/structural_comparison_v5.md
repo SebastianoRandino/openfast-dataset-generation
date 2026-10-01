@@ -1,7 +1,8 @@
 # First structural comparison campaign
 
-**Status (2026-10-01): v5 format migration verified and both 10 s smoke runs
-completed. BD convergence warnings require review before production use.
+**Status (2026-10-01): corrected global DT=0.01 s passed the paired LC1 smoke
+with zero convergence failures. The validated timestep is promoted to the
+production campaign. Remaining aerodynamic validity warnings are unresolved.
 The six 400 s simulations have not been executed.**
 
 `configs/campaigns/structural_comparison_v5.yaml` resolves in order to LC1 ED/BD,
@@ -11,7 +12,8 @@ deduplicated wind dependencies and three deterministic SeaState dependencies.
 No splits or post-processing are defined. The possible later 100 s transient
 discard appears only in provenance; all output starts at t=0.
 
-All cases use OpenFAST 5.0.0, ModCoupling=3, DT=DT_Out=0.025 s. Floating DOFs,
+All cases use OpenFAST 5.0.0, ModCoupling=3, DT=DT_Out=0.01 s, inherited
+MaxConvIter=6 and ConvTol=1e-4. Floating DOFs,
 initial conditions, hydrodynamics, moorings and ROSCO remain inherited. ServoDyn,
 DISCON and the ROSCO library are copied without edits. The optional
 `structural_model: elastodyn | beamdyn` affects case science/identity but never
@@ -23,9 +25,10 @@ the same official BeamDyn primary file for all three blades, DTBeam=0.01 s,
 and those three ED blade modal DOFs disabled. All other structural values stay
 inherited. The DTBeam input is kept distinct from the global solver clock.
 With tight coupling, v5 integrates ED/BD states in the glue code at global
-DT=0.025 s; DTBeam=0.01 is stored in BeamDyn but is not evidence of independent
-0.01 s substeps. See v5 FAST_Solver.f90, its iModTC selection and generalized-alpha
-state integration. This distinction must be considered before production use.
+DT=0.01 s. DTBeam is stored in BeamDyn but does not create independent substeps.
+See v5 FAST_Solver.f90, its iModTC selection and generalized-alpha integration.
+Thus the benchmark now genuinely uses BeamDyn state increment h=0.01 s.
+DEFAULT ServoDyn DT/DLL_DT remains unchanged and resolves to 0.01 s.
 
 Wind uses IECKAI, NTM, category B, 31x31 points over 300x300 m, reference/hub
 height 150 m, shear exponent 0.2, direction 0 degrees, DT=0.05 s. Explicit
@@ -137,7 +140,7 @@ the first solver failure. It cannot launch the six-run campaign. Raw outputs,
 logs, runtime JSON, templates and BTS remain under ignored outputs/.
 The full six-run execution requires subsequent explicit approval.
 
-## Migrated smoke evidence (2026-10-01)
+## Original migrated smoke evidence at DT=0.025 (2026-10-01)
 
 Solver: **OpenFAST-v5.0.0**, GCC 13.3.0, 64-bit, double precision, no OpenMP.
 Executable SHA256:
@@ -256,3 +259,61 @@ Ruff and git diff --check pass. Generated outputs, BTS, logs, local template
 paths and local executable paths remain ignored and excluded from the commit.
 The implementation is committed/pushed only after recording this completed
 smoke evidence; final Git status and commit SHA are reported in chat.
+
+## Corrected timestep validation and production decision
+
+The preceding section preserves the original DT=0.025 / DTBeam=0.01 evidence.
+That pair completed, but BD emitted 124 failed-convergence/invalid-solution
+warnings, from step 15 (0.375 s) through step 166 (4.150 s). It did not satisfy
+the intended effective BeamDyn 0.01 s integration requirement.
+
+The [iteration-budget diagnostic](beamdyn_tight_coupling_diagnostic.md) changed
+only MaxConvIter to 20, then 40. Both returned code 1 and aborted at 0.05 s
+through BD_CalcOutput -> ExtractRelativeRotation -> BD_CrvExtractCrv ->
+BD_CheckRotMat: DBDSQR did not converge. Increasing the iteration budget was
+not a solution and neither value is carried into production.
+
+The same diagnostic traces official OpenFAST v5.0.0 initialization and the
+actual integration path: FAST_SolverInit sets h=global DT, selects BD for tight
+coupling, and PredictNextState/UpdateStatePrediction advance its states with h.
+There is no independent DTBeam subcycling under ModCoupling=3. The original
+configuration therefore advanced BD at 0.025 s despite DTBeam=0.01.
+
+The [corrected LC1 smoke](lc1_dt001_smoke.md) changed only global DT and DT_Out
+to 0.01, restoring/retaining MaxConvIter=6, ConvTol=1e-4 and all other inputs.
+The exact existing BTS, waves, controller and initial conditions were reused.
+
+| Corrected smoke result | ED | BD |
+|---|---:|---:|
+| Return code | 0 | 0 |
+| Simulated time | 10.0 s | 10.0 s |
+| Samples, including t=0 | 1001 | 1001 |
+| Output spacing | 0.01 s | 0.01 s |
+| External wall time | 8.918 s | 28.771 s |
+| Failed convergence / invalid-solution warnings | 0 / 0 | 0 / 0 |
+| DBDSQR / BeamDyn rotation-matrix errors | none | none |
+
+All three BD instances initialized. The source path establishes effective
+BeamDyn tight integration h=0.01 s; runtime structural summaries confirm the
+0.01 step. DEFAULT ServoDyn/DLL communication resolves to 0.01 s, corroborated
+by controller timestamps without analyzing response columns.
+
+The approved production decision is **DT=DT_Out=DTBeam=0.01 s**, TMax=400 s,
+TStart=0, ModCoupling=3, MaxConvIter=6, ConvTol=1e-4. Each eventual full run
+should preserve **40001 raw samples** from t=0 through 400 s. Wind DT=0.05,
+WaveDT=0.25, all seeds/environments, controllers, structural properties,
+platform DOFs, hydrodynamics, moorings and output channels remain unchanged.
+
+Six fresh 400 s workspaces were prepared and audited without executing a solver.
+Each ED/BD pair shares identical BTS/SeaState/controller/aerodynamic/
+hydrodynamic/mooring inputs. Only the FST and ED/BD primary files differ for
+the intended structural selection and accepted native output selection.
+The preparation-only audit checks TMax=400, TStart=0, DT=DT_Out=0.01,
+BD DTBeam=0.01, MaxConvIter=6, ConvTol=1e-4 and byte-identical controller files.
+Generated cases and audit evidence stay ignored.
+
+**Successful tight-coupling convergence does not resolve AeroDyn's Mach >0.3,
+axial-induction or UA-validity warnings.** The controller-interface caveat also
+remains. LC1 startup success does not establish full-duration or LC2/LC3
+convergence. No further simulations or post-processing were performed during
+promotion; production execution still requires explicit approval.
