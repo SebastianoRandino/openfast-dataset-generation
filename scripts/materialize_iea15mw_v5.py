@@ -20,6 +20,35 @@ BASE = "OpenFAST/IEA-15-240-RWT"
 SEMI = BASE + "-UMaineSemi"
 
 
+def adapt_beamdyn_primary(path: Path) -> None:
+    """Remove exactly the five records deleted by the v5 API specification."""
+    lines = path.read_bytes().splitlines(keepends=True)
+    starts = [i for i, line in enumerate(lines) if b"PITCH ACTUATOR PARAMETERS" in line]
+    if len(starts) != 1:
+        raise ValueError("unexpected pinned BeamDyn pitch-actuator section")
+    start = starts[0]
+    labels = [line.split()[1] for line in lines[start + 1:start + 5]]
+    if labels != [b"UsePitchAct", b"PitchJ", b"PitchK", b"PitchC"]:
+        raise ValueError("unexpected pinned BeamDyn pitch-actuator fields")
+    if b"OUTPUTS" not in lines[start + 5]:
+        raise ValueError("unexpected pinned BeamDyn output section ordering")
+    del lines[start:start + 5]
+    path.write_bytes(b"".join(lines))
+
+
+def adapt_beamdyn_blade(path: Path) -> None:
+    """Insert required inactive v5 records without rewriting any source bytes."""
+    original = path.read_bytes()
+    marker = b" ---------------------- DISTRIBUTED PROPERTIES"
+    if original.count(marker) != 1 or b"n_modes" in original:
+        raise ValueError("unexpected pinned BeamDyn blade layout")
+    # Inactive placeholders copied from the official v5 API example, not tuning.
+    addition = (b"------ Modal Damping [unused with damp_type=1] ------\n"
+                b"3 n_modes - Inactive modal damping count\n"
+                b"0.1 0.2 0.3 zeta - Inactive v5 API example coefficients\n")
+    path.write_bytes(original.replace(marker, addition + marker))
+
+
 def materialize(source: Path, destination: Path, rosco: Path) -> None:
     if destination.exists():
         raise ValueError("destination exists; choose a new directory (templates are immutable)")
@@ -84,6 +113,10 @@ def materialize(source: Path, destination: Path, rosco: Path) -> None:
         parts = lines[i].split(); del parts[1]; lines[i] = "    ".join(parts)
     blade.write_text("\n".join(lines) + "\n")
 
+    # v5 always reads the modal-damping records; damp_type=1 keeps them inactive.
+    adapt_beamdyn_primary(destination / BASE / "IEA-15-240-RWT_BeamDyn.dat")
+    adapt_beamdyn_blade(destination / BASE / "IEA-15-240-RWT_BeamDyn_blade.dat")
+
     blade = destination / (BASE + "/IEA-15-240-RWT_AeroDyn15_blade.dat")
     lines = blade.read_text().splitlines()
     start = next(i for i, line in enumerate(lines) if "BlSpn" in line)
@@ -113,6 +146,12 @@ def materialize(source: Path, destination: Path, rosco: Path) -> None:
     manifest = {"template_id": "IEA15MW_VolturnUS_v5.0.0", "openfast_version": "5.0.0",
                 "source_repository": "https://github.com/IEAWindSystems/IEA-15-240-RWT",
                 "source_revision": REVISION,
+                "beamdyn_format_migration": {
+                    "api_reference": "https://github.com/OpenFAST/openfast/blob/v5.0.0/docs/source/user/api_change.rst",
+                    "primary_removed_records": ["PITCH ACTUATOR PARAMETERS", "UsePitchAct", "PitchJ", "PitchK", "PitchC"],
+                    "blade_added_records": ["Modal Damping header", "3 n_modes", "0.1 0.2 0.3 zeta (inactive API example)"],
+                    "retained_damp_type": 1,
+                },
                 "files_sha256": {p.relative_to(destination).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                                  for p in sorted(destination.rglob("*")) if p.is_file()}}
     (destination / "template_provenance.json").write_text(json.dumps(manifest, indent=2) + "\n")

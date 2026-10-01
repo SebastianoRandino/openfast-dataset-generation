@@ -41,11 +41,12 @@ class TimeScales:
     wind_dt_s: float | None = None
     wave_dt_s: float | None = None
     discard_transient_s: float | None = None
+    beamdyn_dt_s: float | None = None
 
     def validate(self) -> None:
         _positive("numerics.integration_dt_s", self.integration_dt_s)
         _positive("numerics.duration_s", self.duration_s)
-        for key in ("output_dt_s", "actuator_dt_s", "wind_dt_s", "wave_dt_s"):
+        for key in ("output_dt_s", "actuator_dt_s", "wind_dt_s", "wave_dt_s", "beamdyn_dt_s"):
             value = getattr(self, key)
             if value is not None:
                 _positive(f"numerics.{key}", value)
@@ -219,6 +220,9 @@ class CampaignSpecification:
     openfast_template_id: str | None = None
     openfast_primary_fst: str | None = None
     openfast_version: str | None = None
+    structural_model: str | None = None
+    output_profile: str | None = None
+    beamdyn_primary_file: str | None = None
     modules: dict[str, bool] = field(default_factory=dict)
     overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
     sweeps: list[dict[str, Any]] = field(default_factory=list)
@@ -233,6 +237,7 @@ class CampaignSpecification:
         if not self.model:
             raise ValidationError("campaign.model is required")
         required_openfast_version({"openfast_template_id": self.openfast_template_id, "openfast_version": self.openfast_version})
+        _validate_structure(self.structural_model, required_openfast_version({"openfast_template_id": self.openfast_template_id, "openfast_version": self.openfast_version}), asdict(self.numerics))
         self.platform.validate(); self.numerics.validate(); self.wind.validate(); self.waves.validate()
         self.controller.validate(); self.actuation.validate()
         unknown = set(self.splits) - {"train", "validation", "test"}
@@ -243,18 +248,41 @@ class CampaignSpecification:
         configuration = {"openfast_template_id": self.openfast_template_id, "openfast_primary_fst": self.openfast_primary_fst}
         if self.openfast_version is not None:
             configuration["openfast_version"] = self.openfast_version
-        return {
+        if self.beamdyn_primary_file is not None:
+            configuration["beamdyn_primary_file"] = self.beamdyn_primary_file
+        result = {
             "model": self.model, "model_configuration": configuration, "turbine": self.turbine, "platform": asdict(self.platform),
             "numerics": asdict(self.numerics), "wind": asdict(self.wind), "waves": asdict(self.waves),
             "controller": asdict(self.controller), "actuation": asdict(self.actuation),
             "modules": self.modules, "overrides": self.overrides,
         }
+        if self.structural_model is not None:
+            result["structural_model"] = self.structural_model
+        if self.numerics.beamdyn_dt_s is None:
+            result["numerics"].pop("beamdyn_dt_s")
+        if self.output_profile is not None:
+            result["output_profile"] = self.output_profile
+        return result
+
+
+def _validate_structure(model: str | None, version: str | None, numerics: dict[str, Any]) -> None:
+    if model is None:
+        return
+    if model not in {"elastodyn", "beamdyn"}:
+        raise ValidationError("structural_model must be elastodyn or beamdyn")
+    if version != "5.0.0":
+        raise ValidationError("explicit structural variants require OpenFAST 5.0.0")
+    if model == "beamdyn":
+        _positive("numerics.beamdyn_dt_s", numerics.get("beamdyn_dt_s"))
 
 
 def validate_resolved_scientific(scientific: dict[str, Any]) -> None:
     """Validate one fully-expanded case using the same typed domain model."""
     try:
         required_openfast_version(scientific.get("model_configuration", {}))
+        _validate_structure(scientific.get("structural_model"), required_openfast_version(scientific.get("model_configuration", {})), scientific["numerics"])
+        if scientific.get("output_profile") not in {None, "structural-comparison-v5"}:
+            raise ValidationError("unsupported output_profile")
         Platform(**scientific["platform"]).validate()
         TimeScales(**scientific["numerics"]).validate()
         Wind(**scientific["wind"]).validate()

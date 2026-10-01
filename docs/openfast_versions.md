@@ -61,6 +61,11 @@ Changes to the pinned official IEA source:
 - AeroDyn: remove Buoyancy; add zero t_c and hydrodynamic blade coefficients,
   zero TwrCp/TwrCa. New hydrodynamic coefficients are inactive for MHK=0.
 - SeaState: WvCrntMod=0 (simple superposition).
+- BeamDyn primary: remove only the v5-deleted pitch-actuator heading and
+  UsePitchAct/PitchJ/PitchK/PitchC records. BeamDyn blade: retain damp_type=1,
+  all six active damping coefficients and every sectional-property byte; add
+  required inactive modal-damping records from the official v5 API example.
+  See [structural comparison and paired smoke evidence](structural_comparison_v5.md).
 - HydroDyn: NAddDOF=0 and HstMod=0, consistent with source WaveStMod=0;
   preserve WAMIT data, standalone moorings and damping.
 

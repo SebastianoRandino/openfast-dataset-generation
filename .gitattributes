@@ -1,0 +1,2 @@
+# Preserve byte-exact official scientific fixtures, including upstream whitespace.
+tests/fixtures/iea15mw_beamdyn/*.dat -text -whitespace

@@ -1,0 +1,53 @@
+name: structural-comparison-v5
+model: ../models/iea15mw_volturnus_v5.0.0.yaml
+structural_model: elastodyn
+output_profile: structural-comparison-v5
+numerics:
+  integration_dt_s: 0.025
+  output_dt_s: 0.025
+  duration_s: 400.0
+  wind_dt_s: 0.05
+  wave_dt_s: 0.25
+  beamdyn_dt_s: 0.01
+wind:
+  kind: turbulent
+  speed_mps: 5.0
+  spectral_model: IECKAI
+  iec_wind_type: NTM
+  iec_turbulence_class: B
+  seed: 510001
+  reference_height_m: 150.0
+  direction_deg: 0.0
+  shear_exponent: 0.2
+  generation_duration_s: 460.0
+  usable_duration_s: 400.0
+  template_id: legacy-iea15mw-turbsim-v2
+  grid: {num_y: 31, num_z: 31, width_m: 300.0, height_m: 300.0}
+  turbsim:
+    overrides: {WrADFF: true, WrBLFF: false, RandSeed2: RanLux}
+waves:
+  kind: irregular
+  significant_height_m: 1.0
+  peak_period_s: 6.0
+  spectrum: JONSWAP
+  direction_deg: 0.0
+  seed: 610001
+  seed_2: RANLUX
+  peak_shape: DEFAULT
+controller: {kind: template}
+overrides:
+  openfast:
+    fst: {ModCoupling: 3}
+case_groups:
+  - fixed: {wind.speed_mps: 5.0, wind.seed: 510001, waves.significant_height_m: 1.0, waves.peak_period_s: 6.0, waves.seed: 610001}
+    sweeps:
+      - dimensions: {structural_model: [elastodyn, beamdyn]}
+  - fixed: {wind.speed_mps: 10.0, wind.seed: 510002, waves.significant_height_m: 2.0, waves.peak_period_s: 8.0, waves.seed: 610002}
+    sweeps:
+      - dimensions: {structural_model: [elastodyn, beamdyn]}
+  - fixed: {wind.speed_mps: 14.0, wind.seed: 510003, waves.significant_height_m: 3.0, waves.peak_period_s: 10.0, waves.seed: 610003}
+    sweeps:
+      - dimensions: {structural_model: [elastodyn, beamdyn]}
+provenance:
+  purpose: controlled ED-vs-BD comparison; raw full-rate output only
+  future_analysis_intention: approximately first 100 s may later be discarded; no removal now

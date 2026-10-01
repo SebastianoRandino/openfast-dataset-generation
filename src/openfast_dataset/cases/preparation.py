@@ -221,6 +221,8 @@ def prepare_openfast_case(case: ResolvedCase, paths: MachinePaths, realization: 
         for field, value in (("WindType", 3), ("FileName_BTS", "Wind/wind.bts")):
             patch_openfast_field(inflow, field, value); patched.append({"file": inflow.relative_to(workspace.resolve()).as_posix(), "field": field})
     patched.extend(_patch_waves(fst, workspace, wave_realization))
+    from .structure import patch_structure
+    patched.extend(patch_structure(case, fst, workspace))
     overrides = case.scientific.get("overrides", {}).get("openfast", {})
     if overrides:
         if not isinstance(overrides, dict):
@@ -230,8 +232,11 @@ def prepare_openfast_case(case: ResolvedCase, paths: MachinePaths, realization: 
             if name not in files or not isinstance(fields, dict):
                 raise ValidationError(f"unsupported OpenFAST override target: {name}")
             for field, value in fields.items():
-                patch_openfast_field(files[name], field, value); patched.append({"file": files[name].relative_to(workspace.resolve()).as_posix(), "field": field})
+                patch_openfast_field(files[name], field, value); patched.append({"file": files[name].resolve().relative_to(workspace.resolve()).as_posix(), "field": field})
     unresolved: dict[str, str] = {}
     metadata = {"case_id": case.case_id, "campaign_provenance": case.provenance, "resolved_scientific_case": case.normalized(), "openfast_template_id": template_id, "template_path": str(template), "template_checksum_sha256": template_checksum, "primary_fst": relative_fst.as_posix(), "integration_dt_s": case.scientific["numerics"]["integration_dt_s"], "output_dt_s": case.scientific["numerics"].get("output_dt_s"), "duration_s": case.scientific["numerics"]["duration_s"], "clock_mapping": {"integration_dt_s": "OpenFAST .fst DT", "output_dt_s": "OpenFAST .fst DT_Out", "actuator_dt_s": "unmapped; active actuation is unsupported", "wind_dt_s": "TurbSim realization input, not patched here", "wave_dt_s": "SeaState WaveDT when explicitly configured; otherwise template policy"}, "wind_kind": wind["kind"], "wind_realization_id": wind_id, "wind_bts_checksum_sha256": wind_checksum, "wave_kind": wave_realization.kind, "wave_realization_id": wave_realization.wave_id, "wave_scientific_parameters": wave_realization.content, "seastate_file": _seastate_path(fst).relative_to(workspace.resolve()).as_posix(), "controller": {"kind": "template", "policy": "preserved_from_openfast_template"}, "unresolved": unresolved, "patched_fields": patched, "preparation_identity": identity, "status": "prepared" if not unresolved else "prepared_with_unresolved_dependencies"}
+    if case.scientific.get("structural_model") is not None:
+        metadata["structural_model"] = case.scientific["structural_model"]
+        metadata["clock_mapping"]["beamdyn_dt_s"] = "BeamDyn DTBeam input; tight coupling integrates states in the glue code at global DT"
     metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return PreparedOpenFASTCase(case, workspace, fst, metadata_path, False)

@@ -23,6 +23,8 @@ _STRUCTURED_PATHS = {
 
 
 def _validate_path(path: str) -> None:
+    if path in {"structural_model", "output_profile", "numerics.beamdyn_dt_s"}:
+        return
     if any(path == prefix or path.startswith(f"{prefix}.") for prefix in _FREE_FORM_PREFIXES):
         return
     root, *rest = path.split(".")

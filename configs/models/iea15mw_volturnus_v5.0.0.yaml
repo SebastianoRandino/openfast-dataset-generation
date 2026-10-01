@@ -2,6 +2,7 @@
 identifier: IEA15MW_VolturnUS_v5.0.0
 openfast_template_id: IEA15MW_VolturnUS_v5.0.0
 openfast_version: 5.0.0
+beamdyn_primary_file: OpenFAST/IEA-15-240-RWT/IEA-15-240-RWT_BeamDyn.dat
 openfast_primary_fst: OpenFAST/IEA-15-240-RWT-UMaineSemi/IEA-15-240-RWT-UMaineSemi.fst
 turbine:
   name: IEA-15-240-RWT
