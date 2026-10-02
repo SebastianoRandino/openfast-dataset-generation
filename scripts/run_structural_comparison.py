@@ -29,9 +29,15 @@ def main() -> None:
     args = parser.parse_args()
 
     cases = resolve_campaign(load_campaign(args.campaign))
-    expected = ["LC1_ED", "LC1_BD", "LC2_ED", "LC2_BD", "LC3_ED", "LC3_BD"]
-    if [case.case_id for case in cases] != expected:
-        parser.error(f"expected validated case order {expected}")
+    expected_ids = [f"case_{index:05d}" for index in range(1, 7)]
+    expected_models = ["elastodyn", "beamdyn"] * 3
+    expected_speeds = [5.0, 5.0, 10.0, 10.0, 14.0, 14.0]
+    if [case.case_id for case in cases] != expected_ids:
+        parser.error("validated structural campaign must resolve to case_00001...case_00006")
+    if [case.scientific["structural_model"] for case in cases] != expected_models:
+        parser.error("validated structural campaign must alternate ElastoDyn/BeamDyn")
+    if [case.scientific["wind"]["speed_mps"] for case in cases] != expected_speeds:
+        parser.error("validated structural campaign must use paired 5/10/14 m/s conditions")
 
     paths = load_machine_paths(args.paths)
     executable = resolve_openfast_executable(paths, "5.0.0")
@@ -50,9 +56,10 @@ def main() -> None:
         run_turbsim(prepare_turbsim_realization(wind, paths, root))
 
     winds = {wind.wind_id: wind for wind in wind_plan.realizations}
+    labels = ["LC1_ED", "LC1_BD", "LC2_ED", "LC2_BD", "LC3_ED", "LC3_BD"]
     report = []
-    for case in cases:
-        print(f"preparing {case.case_id}", flush=True)
+    for label, case in zip(labels, cases):
+        print(f"preparing {label} ({case.case_id})", flush=True)
         prepared = prepare_openfast_case(
             case, paths, winds[wind_plan.case_to_wind[case.case_id]], root
         )
@@ -60,6 +67,7 @@ def main() -> None:
         result = run_openfast(prepared, paths)
         wall = time.perf_counter() - start
         row = {
+            "label": label,
             "case": case.case_id,
             "structural_model": case.scientific["structural_model"],
             "status": result.status,
@@ -72,14 +80,12 @@ def main() -> None:
             json.dumps(report, indent=2) + "\n", encoding="utf-8"
         )
         print(
-            f"{case.case_id}: {result.status}, rc={result.return_code}, "
+            f"{label}: {result.status}, rc={result.return_code}, "
             f"wall={wall:.1f}s, output={result.output_path}",
             flush=True,
         )
         if result.return_code != 0:
-            raise SystemExit(
-                f"{case.case_id} failed; campaign stopped. Inspect its runtime log."
-            )
+            raise SystemExit(f"{label} failed; campaign stopped. Inspect its runtime log.")
 
     print("all six structural-comparison cases completed", flush=True)
 
