@@ -1,86 +1,31 @@
-# Agent Guidance
+# Development and scientific invariants
 
-## Project objective
-Build a general, reproducible framework for generating OpenFAST simulation campaigns and identification datasets. The primary current application is the IEA 15 MW + VolturnUS floating turbine, but the architecture must support other models and fixed or floating configurations. Do not tie the framework to one DoE.
-
-## Core architecture
-
-```text
-CampaignSpecification
-        |
-        v
-ResolvedCase
-        |
-        v
-dependencies:
-    WindRealization
-    WaveRealization       [future/incomplete]
-        |
-        v
-prepared OpenFAST case
-        |
-        v
-simulation -> postprocessing -> versioned reduced dataset
-```
+This repository generates reproducible OpenFAST simulation campaigns and reduced analysis products. The current validated reference is the IEA 15 MW + VolturnUS OpenFAST v5 structural comparison.
 
 ## Scientific invariants
-Do not silently change DoE points, seeds or seed derivation, splits, integration/output/controller/actuator/wind/wave timesteps, duration, TurbSim or wave settings, controller tuning, OpenFAST modules, output channels, template scientific values, platform initial conditions, or downstream naming/schema. Intentional scientific changes must be explicit and tested.
 
-## Migration rule
+Do not silently change DoE/campaign points, seeds, integration/output/wind/wave/BeamDyn time steps, duration, TurbSim or wave settings, controller settings, OpenFAST modules, output channels, template values, platform initial conditions, or downstream schemas. Intentional scientific changes must be explicit, documented and tested.
 
-```text
-legacy behavior -> characterize -> regression test -> new implementation
--> numerical/configuration comparison -> only then remove duplication
-```
+Frequently varied scientific parameters belong in campaign/model YAML. Detailed validated OpenFAST/TurbSim baselines belong in templates. Machine-specific paths belong in ignored local configuration.
 
-Never clean up scientific values merely because they look suspicious.
+Wind and wave realizations are physical/generated dependencies rather than simulation-case metadata. Parameters that do not change the generated field must not alter dependency identity.
 
-## Configuration philosophy
-Frequently varied scientific parameters belong in campaign/model YAML. Detailed validated OpenFAST/TurbSim baselines belong in templates. Machine-specific paths belong in ignored local configuration. Do not reproduce every OpenFAST input field in YAML.
+## Execution safety
 
-Keep these time scales distinct: `integration_dt`, `output_dt`, `controller_dt`, `actuator_dt`, `wind_dt`, and `wave_dt`. Never silently assume they are equal.
+Unit tests must not execute TurbSim, OpenFAST, HydroDyn or ROSCO. External executable integration is explicit and opt-in. Never launch a full campaign as a test-suite side effect.
 
-## Dependency identity and metadata
-Wind, wave, and other realizations represent physical/generated dependencies, not simulation cases. Different controllers or waves can consume the same wind realization. Only parameters that can change the generated wind field belong in its scientific hash. DLC labels, split, case ID, and descriptive tags must remain outside physical dependency hashes unless they genuinely alter generation.
+Do not commit generated `.bts`, `.out`, `.outb`, prepared case trees, logs, local binaries, machine-specific paths or secrets.
 
-For IEC TurbSim winds, keep these domain concepts distinct:
+## Development check
 
-- `spectral_model` maps to TurbSim `TurbModel` (for example `IECKAI`).
-- `iec_wind_type` maps to `IEC_WindType` (for example `NTM`, `ETM`, `1ETM`).
-- `iec_turbulence_class` maps to `IECturbc` (for example `A`, `B`, `C`).
-
-The renderer performs this final mapping; raw labels are not the campaign-domain design.
-
-## Execution safety and generated files
-Unit tests must not execute TurbSim, OpenFAST, HydroDyn, or ROSCO. External executable integration must be explicit and opt-in; never launch a full campaign in automated tests. Do not commit `.bts`, `.out`, `.outb`, large generated cases, logs, machine-specific paths, or secrets.
-
-## Working with legacy code
-Legacy scripts are scientific references until equivalence is demonstrated. Do not delete or rewrite them merely because the package implementation exists.
-
-## Agent workflow
-Before modifying code:
-
-1. Read `AGENTS.md`.
-2. Inspect `git status` and recent commits.
-3. Preserve uncommitted user or agent work.
-4. Read relevant migration/configuration documentation.
-5. Run existing tests.
-
-Before committing:
-
-1. Inspect the full diff.
-2. Run the full test suite in the project virtual environment.
-3. Run `git diff --check`.
-4. Check for generated/large files, machine-specific paths, secrets, and accidental scientific changes.
-
-## Development setup
+Before committing code changes:
 
 ```bash
-python -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -e ".[dev]"
 pytest
+ruff check .
+git diff --check
+git status
 ```
 
-Do not commit `.venv` and do not use a permanent `PYTHONPATH=src` workaround.
+Inspect the full diff and confirm that no scientific setting changed unintentionally.
