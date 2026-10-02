@@ -4,9 +4,9 @@ Reproducible OpenFAST/TurbSim campaign generator used for the IEA 15 MW + UMaine
 
 The current validated reference is the **OpenFAST v5.0.0 structural comparison campaign** (ElastoDyn vs BeamDyn). The repository contains the campaign configuration, case-generation code, tests, provenance and the ED/BeamDyn comparison analysis. Large generated files (`.bts`, `.outb`, prepared cases and logs) are intentionally not committed.
 
-## What Lorenzo needs
+## Reproducible workflow
 
-For the validated structural campaign the workflow is:
+The validated structural campaign follows this reproducible workflow:
 
 ```text
 campaign YAML
