@@ -1,5 +1,0 @@
-# Design-of-Experiments settings.
-# Values must be reconciled with the validated legacy generator before release.
-doe:
-  seed: 42
-  output: data/doe/doe_cases.csv
