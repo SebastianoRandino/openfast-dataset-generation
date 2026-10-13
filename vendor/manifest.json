@@ -1,0 +1,28 @@
+{
+  "platform": "Linux x86_64 (Ubuntu 24.04 / WSL2)",
+  "source_revisions": {
+    "openfast-5.0.0": "2895884d2be01862173c88d70f86b358d2f1a50a",
+    "openfast-4.1.1": "4350a49a6292144c6d8433671e4a9ea33b46c214",
+    "rosco-2.10.1": "2a180e7a7a5f22371bf54cd083dfb320e0406af7"
+  },
+  "shared_libraries": [
+    "libgfortran.so.5",
+    "liblapack.so.3",
+    "libblas.so.3",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6"
+  ],
+  "files_sha256": {
+    "vendor/NOTICE.md": "fa9211ff4619df16876177cab9599e086a330109118b8723596029ee144b4ba9",
+    "vendor/bin/linux-x86_64/openfast-4.1.1": "c4dd9aee1ea651197ff0afea6b8f6d98d42793ff8324434d11c37cf6f77ef153",
+    "vendor/bin/linux-x86_64/openfast-5.0.0": "d2ec2e74a887acc338fdec8e80521bede637f859796d83c00a50511e6741c168",
+    "vendor/bin/linux-x86_64/turbsim": "b0810897eb270e5796323196fac8abda3f1ffcf2b06911ba6d6da82d8280c134",
+    "vendor/licenses/IEA-15-240-RWT.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "vendor/licenses/OpenFAST.txt": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+    "vendor/licenses/ROSCO.txt": "72b1578082d854e59f9062bb57fa5ffa6a1e26b792924b7ff1038f2ff7df0a9f",
+    "vendor/sources/openfast-4.1.1.tar.gz": "a0ff0fab03f1691c552788ca6fdfa2ee0fe6d8a6042f77bd271c789b7de338d0",
+    "vendor/sources/openfast-5.0.0.tar.gz": "bd05204266c5e9b29c1cd4f649c0dd40bc2ab898321b500c309dbcf9b8595a21",
+    "vendor/sources/rosco-2.10.1.tar.gz": "cf56e4ddf7a5e47361a291f5537ee5bad3279bbdcffe843c7e5971185fdc52a7"
+  }
+}

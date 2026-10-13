@@ -1,0 +1,39 @@
+# Explicit small startup check, not a production wind grid or convergence validation.
+name: bundled-floating-turbulent-smoke
+model: ../models/iea15mw_volturnus_v5.0.0.yaml
+numerics:
+  integration_dt_s: 0.01
+  output_dt_s: 0.01
+  duration_s: 5.0
+  wind_dt_s: 0.05
+  wave_dt_s: 0.25
+wind:
+  kind: turbulent
+  speed_mps: 12.0
+  spectral_model: IECKAI
+  iec_wind_type: NTM
+  iec_turbulence_class: B
+  seed: 510001
+  reference_height_m: 150.0
+  direction_deg: 0.0
+  shear_exponent: 0.2
+  generation_duration_s: 60.0
+  usable_duration_s: 5.0
+  template_id: legacy-iea15mw-turbsim-v2
+  grid:
+    num_y: 9
+    num_z: 9
+    width_m: 300.0
+    height_m: 300.0
+  turbsim:
+    overrides:
+      WrADFF: true
+      WrBLFF: false
+      RandSeed2: RanLux
+waves:
+  kind: regular
+  wave_height_m: 1.0
+  period_s: 6.0
+  direction_deg: 0.0
+controller:
+  kind: template

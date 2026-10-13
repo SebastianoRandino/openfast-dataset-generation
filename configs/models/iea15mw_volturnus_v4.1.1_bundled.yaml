@@ -1,0 +1,14 @@
+# Repository-local legacy dependencies, with their own frozen tree checksum.
+identifier: IEA15MW_VolturnUS_v4.1.1_bundled
+openfast_template_id: IEA15MW_VolturnUS_v4.1.1
+openfast_version: 4.1.1
+openfast_primary_fst: IEA-15-240-RWT-UMaineSemi/IEA-15-240-RWT-UMaineSemi.fst
+turbine:
+  name: IEA-15-240-RWT
+  template_identifier: IEA-15-240-RWT-UMaineSemi
+  template_revision: null
+  template_checksum: 5bc3a8dd08bad8390fc805f7b156bc58a1c2dbc5429106fb56a35c752a9f6da0
+platform:
+  kind: floating
+  hydrodynamics_template: SeaState.dat
+  mooring_template: MoorDyn.dat

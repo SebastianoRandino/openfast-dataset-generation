@@ -1,0 +1,13 @@
+name: bundled-floating-v4-smoke
+model: ../models/iea15mw_volturnus_v4.1.1_bundled.yaml
+numerics:
+  integration_dt_s: 0.01
+  output_dt_s: 0.01
+  duration_s: 5.0
+wind:
+  kind: steady
+  speed_mps: 12.0
+waves:
+  kind: none
+controller:
+  kind: template
